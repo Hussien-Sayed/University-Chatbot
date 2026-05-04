@@ -15,6 +15,12 @@ A RAG-based university chatbot that uses Groq API for LLM and HuggingFace API fo
 └── .env.sample              # Environment variables template
 ```
 
+## Data Source:
+- Original source for the data is from the *Chatbot Dataset* by Nirali Vaghani [kaggle chatbot dataset](https://www.kaggle.com/datasets/niraliivaghani/chatbot-dataset). The dataset is licensed under the Open [Data Commons Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/dbcl/1-0/).
+
+
+- The data has been modified using AI and manually to fillout placeholders that where left incomplete for a more realistic experience. For example The university name was placed as ChatTech University.
+
 ## Setup
 
 ### 1. Install Dependencies
