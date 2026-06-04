@@ -1,6 +1,8 @@
 # University Chatbot
 
-A RAG-based university chatbot that uses Groq API for LLM and HuggingFace API for embeddings, with FAISS vector database to answer questions about university information.
+The Purpose of this project is to build a simple RAG system, and evaluate different architictural choices on the retrieval quality. <br>
+
+For that, a university based dataset is used and a streamlit app to interact with the chatbot.
 
 ## Project Structure
 
@@ -26,7 +28,7 @@ A RAG-based university chatbot that uses Groq API for LLM and HuggingFace API fo
 ### 1. Install Dependencies
 
 ```bash
-pip install groq faiss-cpu numpy streamlit python-dotenv pytest huggingface_hub
+pip install groq faiss-cpu numpy streamlit python-dotenv pytest huggingface_hub ragas langchain_community
 ```
 
 ### 2. Configure Environment
@@ -66,6 +68,12 @@ EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
 ```bash
 streamlit run app.py
+```
+
+or 
+
+```bash
+python -m streamlit run app.py
 ```
 
 The app will open in your browser at `http://localhost:8501`

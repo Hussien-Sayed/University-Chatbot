@@ -1,0 +1,306 @@
+[
+  {
+    "question": "whatsup",
+    "ground_truth": "Good to see you again!"
+  },
+  {
+    "question": "How are you?",
+    "ground_truth": "Good to see you again!"
+  },
+  {
+    "question": "See you later",
+    "ground_truth": "Come back soon"
+  },
+  {
+    "question": "gtg",
+    "ground_truth": "Talk to you later"
+  },
+  {
+    "question": "what is the name of your developers",
+    "ground_truth": "I was developed by the Virtual AI Lab at ChatTech University."
+  },
+  {
+    "question": "your creators",
+    "ground_truth": "I was developed by the Virtual AI Lab at ChatTech University."
+  },
+  {
+    "question": "developers",
+    "ground_truth": "I was developed by the Virtual AI Lab at ChatTech University."
+  },
+  {
+    "question": "who is this",
+    "ground_truth": "I'm Mind Reader"
+  },
+  {
+    "question": "what are you",
+    "ground_truth": "You can call me Mind Reader."
+  },
+  {
+    "question": "your name",
+    "ground_truth": "I am your helper"
+  },
+  {
+    "question": "when should i come to college",
+    "ground_truth": "ChatTech University is open from 8:00 AM to 6:00 PM, Monday through Saturday."
+  },
+  {
+    "question": "working days",
+    "ground_truth": "ChatTech University is open from 8:00 AM to 6:00 PM, Monday through Saturday."
+  },
+  {
+    "question": "when are you guys open",
+    "ground_truth": "ChatTech University is open from 8:00 AM to 6:00 PM, Monday through Saturday."
+  },
+  {
+    "question": "more info",
+    "ground_truth": "You can contact ChatTech University at: +123-800-555"
+  },
+  {
+    "question": "phone number",
+    "ground_truth": "You can contact ChatTech University at: +123-800-555"
+  },
+  {
+    "question": "how can i call you",
+    "ground_truth": "You can contact ChatTech University at: +123-800-555"
+  },
+  {
+    "question": "computer",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence."
+  },
+  {
+    "question": "branches?",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence."
+  },
+  {
+    "question": "courses?",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence."
+  },
+  {
+    "question": "Computer engineering?",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence."
+  },
+  {
+    "question": "list of courses",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence."
+  },
+  {
+    "question": "fees for first year",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees"
+  },
+  {
+    "question": "fees for Ac room for girls",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees"
+  },
+  {
+    "question": "tell me the fee",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees"
+  },
+  {
+    "question": "fees for Ac room for boys",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees"
+  },
+  {
+    "question": "fees",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees"
+  },
+  {
+    "question": "how to reach college",
+    "ground_truth": "ChatTech University is located at: 123 Innovation Drive, Future City, FC 56789. View map: https://maps.example.com/chattech"
+  },
+  {
+    "question": "how can I reach college",
+    "ground_truth": "ChatTech University is located at: 123 Innovation Drive, Future City, FC 56789. View map: https://maps.example.com/chattech"
+  },
+  {
+    "question": "where is college located",
+    "ground_truth": "ChatTech University is located at: 123 Innovation Drive, Future City, FC 56789. View map: https://maps.example.com/chattech"
+  },
+  {
+    "question": "what is the hostel fee",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel"
+  },
+  {
+    "question": "hostel facilities",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel"
+  },
+  {
+    "question": "hostel address",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel"
+  },
+  {
+    "question": "hostel facility",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel"
+  },
+  {
+    "question": "events organised",
+    "ground_truth": "Check out our latest events here: https://chattechuniversity.edu/events"
+  },
+  {
+    "question": "Are there any event held at college",
+    "ground_truth": "Check out our latest events here: https://chattechuniversity.edu/events"
+  },
+  {
+    "question": "documents needed at the time of admission",
+    "ground_truth": "Required documents are listed here: https://chattechuniversity.edu/admissions/documents"
+  },
+  {
+    "question": "documents needed",
+    "ground_truth": "Required documents are listed here: https://chattechuniversity.edu/admissions/documents"
+  },
+  {
+    "question": "documents needed for admision",
+    "ground_truth": "Required documents are listed here: https://chattechuniversity.edu/admissions/documents"
+  },
+  {
+    "question": "floors in college",
+    "ground_truth": "The main engineering building at ChatTech University has 5 floors."
+  },
+  {
+    "question": "Syllabus for IT",
+    "ground_truth": "View syllabus and timetable here: https://chattechuniversity.edu/academics/syllabus"
+  },
+  {
+    "question": "does the college have library facility",
+    "ground_truth": "Our central library is open from 8 AM to 8 PM. More info: https://chattechuniversity.edu/library"
+  },
+  {
+    "question": "how many libraries",
+    "ground_truth": "Our central library is open from 8 AM to 8 PM. More info: https://chattechuniversity.edu/library"
+  },
+  {
+    "question": "Library",
+    "ground_truth": "Our central library is open from 8 AM to 8 PM. More info: https://chattechuniversity.edu/library"
+  },
+  {
+    "question": "college infrastructure",
+    "ground_truth": "ChatTech University features modern labs, smart classrooms, high-speed Wi-Fi, and advanced research centers."
+  },
+  {
+    "question": "canteen facilities",
+    "ground_truth": "Our campus canteen offers a wide range of hygienic and affordable meals."
+  },
+  {
+    "question": "canteen",
+    "ground_truth": "Our campus canteen offers a wide range of hygienic and affordable meals."
+  },
+  {
+    "question": "food in canteen",
+    "ground_truth": "Our menu includes sandwiches, pasta, rice meals, snacks, and beverages."
+  },
+  {
+    "question": "companies visit",
+    "ground_truth": "Placement details are available at: https://chattechuniversity.edu/placements"
+  },
+  {
+    "question": "recruitment",
+    "ground_truth": "Placement details are available at: https://chattechuniversity.edu/placements"
+  },
+  {
+    "question": "it hod",
+    "ground_truth": "The Head of IT Department is Dr. Alan Turing, located in Tech Block A."
+  },
+  {
+    "question": "Who is computer HOD",
+    "ground_truth": "The Head of Computer Engineering is Dr. Ada Lovelace, located in Tech Block B."
+  },
+  {
+    "question": "whatv is the principal name",
+    "ground_truth": "The principal of ChatTech University is Dr. Isaac Newton."
+  },
+  {
+    "question": "when is exam",
+    "ground_truth": "Academic calendar: https://chattechuniversity.edu/calendar"
+  },
+  {
+    "question": "When is semester exam",
+    "ground_truth": "Academic calendar: https://chattechuniversity.edu/calendar"
+  },
+  {
+    "question": "admission process",
+    "ground_truth": "Apply online here: https://chattechuniversity.edu/admissions"
+  },
+  {
+    "question": "scholarship ce",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships"
+  },
+  {
+    "question": "scholarship for computer engineering",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships"
+  },
+  {
+    "question": "mechanical scholarship",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships"
+  },
+  {
+    "question": "list of scholarship",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships"
+  },
+  {
+    "question": "chemical scholarship",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships"
+  },
+  {
+    "question": "College facility",
+    "ground_truth": "Facilities include labs, auditorium, sports complex, library, and innovation hub."
+  },
+  {
+    "question": "number of seats per branch",
+    "ground_truth": "Each major engineering branch accepts approximately 120 students annually."
+  },
+  {
+    "question": "maximum number of seats",
+    "ground_truth": "Each major engineering branch accepts approximately 120 students annually."
+  },
+  {
+    "question": "college dresscode",
+    "ground_truth": "Students are required to wear smart casuals with ID badges. Formal attire is required during presentations."
+  },
+  {
+    "question": "what is the uniform",
+    "ground_truth": "Students are required to wear smart casuals with ID badges. Formal attire is required during presentations."
+  },
+  {
+    "question": "committee",
+    "ground_truth": "For committee information, contact: +123-800-555"
+  },
+  {
+    "question": "Holiday in these year",
+    "ground_truth": "Academic calender is given to you by your class-soordinators after you join your respective classes"
+  },
+  {
+    "question": "holidays",
+    "ground_truth": "Academic calender is given to you by your class-soordinators after you join your respective classes"
+  },
+  {
+    "question": "please provide sports and games information",
+    "ground_truth": "Our university encourages all-round development of students and hence provides sports facilities in the campus. For more details visit https://chattechuniversity.edu/sports"
+  },
+  {
+    "question": "nice work",
+    "ground_truth": "I am glad I helped you"
+  },
+  {
+    "question": "k",
+    "ground_truth": "I am glad I helped you"
+  },
+  {
+    "question": "its ok",
+    "ground_truth": "I am glad I helped you"
+  },
+  {
+    "question": "things you can do",
+    "ground_truth": "I can answer to low-intermediate questions regarding college"
+  },
+  {
+    "question": "is ragging done here",
+    "ground_truth": "We are Proud to tell you that our college provides ragging free environment, and we have strict rules against ragging"
+  },
+  {
+    "question": "antiragging facility",
+    "ground_truth": "We are Proud to tell you that our college provides ragging free environment, and we have strict rules against ragging"
+  },
+  {
+    "question": "hod",
+    "ground_truth": "HODs differ for each branch, please be more specific like: (HOD it)"
+  }
+]

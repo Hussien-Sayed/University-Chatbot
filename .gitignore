@@ -1,3 +1,6 @@
 project-steps.md
+debug.ipynb
 .env
+*.pyc
+__pycache__
 

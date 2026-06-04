@@ -23,7 +23,7 @@ class EmbeddingAPI:
         if not text or not text.strip():
             raise ValueError("text cannot be empty")
 
-        embedding = self.client.feature_extraction(text)
+        embedding = self.client.feature_extraction(text, normalize=True, truncate=True)
 
         if hasattr(embedding, 'tolist'):
             embedding = embedding.tolist()
