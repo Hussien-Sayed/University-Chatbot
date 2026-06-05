@@ -17,16 +17,15 @@ class VectorDBBuilder:
         data_loader: DataLoader,
         embedding_api: EmbeddingAPI,
         vdb_type: str = "faiss",
-        chunking_strategy: str = "fixed_size",
-        chunk_size: int = 500,
         vdb_save_path: Optional[str] = None
     ):
         self.data_loader = data_loader
         self.embedding_api = embedding_api
         self.vdb_type = vdb_type
-        self.chunking_strategy = chunking_strategy
-        self.chunk_size = chunk_size
+        self.chunk_size = int(os.getenv("CHUNK_SIZE", "500"))
+        self.chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "0"))
         self.vdb_save_path = vdb_save_path or os.getenv("VDB_SAVE_PATH", "data/vector_db")
+        self.document_structure_mode = os.getenv("DOCUMENT_STRUCTURE_MODE", "structural")
 
         self.chunks = []
         self.embeddings = []
@@ -40,11 +39,15 @@ class VectorDBBuilder:
         self.chunks = []
         chunk_id = 0
 
+        step = self.chunk_size - self.chunk_overlap
+        if step <= 0:
+            step = self.chunk_size
+
         for doc in documents:
             content = doc.get('content', '')
             words = content.split()
 
-            for i in range(0, len(words), self.chunk_size):
+            for i in range(0, len(words), step):
                 chunk_words = words[i:i + self.chunk_size]
                 chunk_text = ' '.join(chunk_words)
 
@@ -94,8 +97,9 @@ class VectorDBBuilder:
             'embeddings': self.embeddings,
             'metadata': {
                 'vdb_type': self.vdb_type,
-                'chunking_strategy': self.chunking_strategy,
                 'chunk_size': self.chunk_size,
+                'chunk_overlap': self.chunk_overlap,
+                'document_structure_mode': self.document_structure_mode,
                 'num_chunks': len(self.chunks),
                 'embedding_dimension': len(self.embeddings[0]) if self.embeddings else 0
             }

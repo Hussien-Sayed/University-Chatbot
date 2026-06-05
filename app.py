@@ -20,7 +20,8 @@ def build_vector_db():
     builder = VectorDBBuilder(
         data_loader=data_loader,
         embedding_api=embedding_api,
-        vdb_save_path=os.getenv("VDB_SAVE_PATH", "data/vector_db")
+        vdb_save_path=os.getenv("VDB_SAVE_PATH", "data/vector_db"),
+
     )
 
     result = builder.build_vector_db()

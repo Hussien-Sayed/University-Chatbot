@@ -122,6 +122,7 @@ def render_app(vector_db_file: Path) -> None:
         st.write(f"File: `{vector_db_file}`")
         st.write(f"Chunks: `{len(chunks)}`")
         st.write(f"Embedding shape: `{embeddings.shape}`")
+        st.write(f"Document structure mode: `{metadata.get('document_structure_mode', 'unknown')}`")
 
         if metadata:
             st.subheader("Metadata")
