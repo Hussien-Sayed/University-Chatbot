@@ -251,11 +251,13 @@ class RAGEvaluator:
 
             q = sample["question"]
 
+            query_start_time = time.time()
             try:
                 q_emb = self.embedding_api.generate_embedding(q)
                 retrieved_chunks = self.retriever.retrieve_chunks(q_emb)
                 ctx = [item['chunk'].get('content', '') for item in retrieved_chunks]
                 ans = self.retriever.generate_response(q, q_emb)
+                query_time_seconds = time.time() - query_start_time
             except Exception as exc:
                 failures.append({
                     "sample_index": sample_index,
@@ -274,7 +276,8 @@ class RAGEvaluator:
                 "question": q,
                 "answer": ans,
                 "contexts": ctx,
-                "ground_truth": sample["ground_truth"]
+                "ground_truth": sample["ground_truth"],
+                "query_time_seconds": query_time_seconds
             }
 
             if experiment_name:

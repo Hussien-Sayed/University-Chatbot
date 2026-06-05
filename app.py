@@ -1,4 +1,10 @@
 import os
+import pickle
+import time
+from pathlib import Path
+from typing import Any, Dict, List
+
+import numpy as np
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -21,7 +27,6 @@ def build_vector_db():
         data_loader=data_loader,
         embedding_api=embedding_api,
         vdb_save_path=os.getenv("VDB_SAVE_PATH", "data/vector_db"),
-
     )
 
     result = builder.build_vector_db()
@@ -39,14 +44,41 @@ def load_retriever():
     return retriever
 
 
-def get_query_embedding(query, embedding_api):
-    return embedding_api.generate_embedding(query)
+@st.cache_resource
+def load_vector_db():
+    vector_db_path = Path(os.getenv("VDB_SAVE_PATH", "data/vector_db")) / "vector_db.pkl"
+    if not vector_db_path.exists():
+        return None
+    with open(vector_db_path, "rb") as f:
+        return pickle.load(f)
 
 
-def main():
-    st.set_page_config(page_title="University Chatbot", page_icon="🎓", layout="centered")
+def reduce_embeddings_pca(embeddings: np.ndarray) -> np.ndarray:
+    if embeddings.ndim != 2:
+        raise ValueError(f"Expected 2D embeddings array, got shape: {embeddings.shape}")
 
-    st.title("🎓 University Chatbot")
+    if embeddings.shape[0] == 0:
+        return np.empty((0, 2), dtype=np.float32)
+
+    if embeddings.shape[0] == 1:
+        return np.array([[0.0, 0.0]], dtype=np.float32)
+
+    centered = embeddings - embeddings.mean(axis=0, keepdims=True)
+    _, _, vt = np.linalg.svd(centered, full_matrices=False)
+
+    components = vt[:2]
+    points = centered @ components.T
+
+    if points.shape[1] == 1:
+        points = np.column_stack([points[:, 0], np.zeros(points.shape[0])])
+
+    return points.astype(np.float32)
+
+
+def chat_page():
+    st.set_page_config(page_title="Chat - University Chatbot", page_icon="💬", layout="centered")
+
+    st.title("💬 Chat")
     st.caption("Ask me anything about the university!")
 
     if "messages" not in st.session_state:
@@ -73,6 +105,14 @@ def main():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+            if "retrieved_chunks" in message:
+                with st.expander("📄 Retrieved Chunks"):
+                    for i, chunk in enumerate(message["retrieved_chunks"], 1):
+                        st.markdown(f"**Chunk {i}** (Source: `{chunk.get('source', 'unknown')}`)")
+                        st.text(chunk.get('content', ''))
+                        st.divider()
+            if "query_time" in message:
+                st.caption(f"⏱️ Query time: {message['query_time']:.2f} seconds")
 
     if query := st.chat_input("Ask a question..."):
         st.session_state.messages.append({"role": "user", "content": query})
@@ -89,15 +129,147 @@ def main():
                         retriever = load_retriever()
                         embedding_api = EmbeddingAPI()
 
-                        query_embedding = get_query_embedding(query, embedding_api)
+                        query_start = time.time()
+                        query_embedding = embedding_api.generate_embedding(query)
+                        retrieved_chunks = retriever.retrieve_chunks(query_embedding)
                         response = retriever.generate_response(query, query_embedding)
+                        query_time = time.time() - query_start
 
                         st.markdown(response)
-                        st.session_state.messages.append({"role": "assistant", "content": response})
+
+                        with st.expander("📄 Retrieved Chunks"):
+                            for i, chunk in enumerate(retrieved_chunks, 1):
+                                st.markdown(f"**Chunk {i}** (Source: `{chunk.get('source', 'unknown')}`)")
+                                st.text(chunk.get('content', ''))
+                                st.divider()
+
+                        st.caption(f"⏱️ Query time: {query_time:.2f} seconds")
+
+                        message_data = {
+                            "role": "assistant",
+                            "content": response,
+                            "retrieved_chunks": [item.get('chunk', {}) for item in retrieved_chunks],
+                            "query_time": query_time
+                        }
+                        st.session_state.messages.append(message_data)
                     except Exception as e:
                         error_msg = f"Sorry, I encountered an error: {str(e)}"
                         st.error(error_msg)
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
+
+
+def dashboard_page():
+    st.set_page_config(page_title="Dashboard - University Chatbot", page_icon="📊", layout="wide")
+
+    st.title("📊 Dashboard")
+    st.caption("Vector DB visualization and analytics")
+
+    db_data = load_vector_db()
+
+    if db_data is None:
+        st.error("Vector database not found. Please build it first from the Chat page.")
+        return
+
+    chunks = db_data.get("chunks", [])
+    embeddings = np.array(db_data.get("embeddings", []), dtype=np.float32)
+    metadata = db_data.get("metadata", {})
+
+    if not chunks or embeddings.size == 0:
+        st.error("No chunks or embeddings found in the vector database.")
+        return
+
+    if len(chunks) != embeddings.shape[0]:
+        st.error(f"Chunk count ({len(chunks)}) does not match embedding count ({embeddings.shape[0]}).")
+        return
+
+    points = reduce_embeddings_pca(embeddings)
+
+    rows = []
+    for index, chunk in enumerate(chunks):
+        content = chunk.get("content", "")
+        rows.append({
+            "x": float(points[index, 0]),
+            "y": float(points[index, 1]),
+            "chunk_id": chunk.get("chunk_id"),
+            "doc_id": chunk.get("doc_id"),
+            "tag": chunk.get("tag") or "unknown",
+            "source": chunk.get("source") or "unknown",
+            "preview": content[:250],
+            "content": content,
+        })
+
+    tags = sorted({row["tag"] for row in rows})
+
+    with st.sidebar:
+        st.header("Vector DB Info")
+        st.write(f"Chunks: `{len(chunks)}`")
+        st.write(f"Embedding shape: `{embeddings.shape}`")
+        st.write(f"Document structure mode: `{metadata.get('document_structure_mode', 'unknown')}`")
+
+        if metadata:
+            st.subheader("Metadata")
+            st.json(metadata)
+
+        st.subheader("Filters")
+        search_text = st.text_input("Search chunks")
+        selected_tags = st.multiselect("Filter by tag", tags)
+
+    filtered_rows = rows
+    if selected_tags:
+        filtered_rows = [row for row in filtered_rows if row["tag"] in selected_tags]
+
+    if search_text.strip():
+        query = search_text.casefold().strip()
+        filtered_rows = [
+            row for row in filtered_rows
+            if query in str(row["content"]).casefold()
+            or query in str(row["tag"]).casefold()
+            or query in str(row["doc_id"]).casefold()
+            or query in str(row["chunk_id"]).casefold()
+        ]
+
+    st.subheader("2D PCA Map")
+    st.write(f"Showing `{len(filtered_rows)}` of `{len(rows)}` chunks.")
+
+    if filtered_rows:
+        chart_rows = [
+            {
+                "x": row["x"],
+                "y": row["y"],
+                "tag": row["tag"],
+                "chunk_id": row["chunk_id"],
+            }
+            for row in filtered_rows
+        ]
+        st.scatter_chart(chart_rows, x="x", y="y", color="tag", size=80)
+    else:
+        st.warning("No chunks match the selected filters.")
+
+    st.subheader("Chunks")
+    st.dataframe(
+        filtered_rows,
+        use_container_width=True,
+        column_order=["chunk_id", "doc_id", "tag", "source", "preview", "x", "y"],
+        hide_index=True,
+    )
+
+    st.subheader("Inspect a Chunk")
+    if filtered_rows:
+        selected_chunk_id = st.selectbox(
+            "Choose chunk_id",
+            [row["chunk_id"] for row in filtered_rows],
+        )
+        selected = next(row for row in filtered_rows if row["chunk_id"] == selected_chunk_id)
+        st.json({key: selected[key] for key in ["chunk_id", "doc_id", "tag", "source", "x", "y"]})
+        st.text_area("Content", selected["content"], height=250)
+
+
+def main():
+    pg = st.navigation([
+        st.Page(chat_page, title="Chat", icon="💬"),
+        st.Page(dashboard_page, title="Dashboard", icon="📊"),
+    ])
+    pg.run()
 
 
 if __name__ == "__main__":
