@@ -131,16 +131,28 @@ def chat_page():
 
                         query_start = time.time()
                         query_embedding = embedding_api.generate_embedding(query)
-                        retrieved_chunks = retriever.retrieve_chunks(query_embedding)
+                        retrieved_chunks = retriever.retrieve_chunks(query, query_embedding)
                         response = retriever.generate_response(query, query_embedding)
                         query_time = time.time() - query_start
 
                         st.markdown(response)
 
                         with st.expander("📄 Retrieved Chunks"):
+                            retrieval_type = retriever.retriever_type
                             for i, chunk in enumerate(retrieved_chunks, 1):
-                                st.markdown(f"**Chunk {i}** (Source: `{chunk.get('source', 'unknown')}`)")
-                                st.text(chunk.get('content', ''))
+                                chunk_data = chunk.get('chunk', {})
+                                st.markdown(f"**Chunk {i}** (Source: `{chunk_data.get('source', 'unknown')}`)")
+                                
+                                # Display scores based on retrieval type
+                                if retrieval_type == "vector":
+                                    st.caption(f"Vector Similarity: {chunk.get('vector_score', 0):.4f}")
+                                elif retrieval_type == "bm25":
+                                    st.caption(f"BM25 Score: {chunk.get('bm25_score', 0):.4f}")
+                                elif retrieval_type == "hybrid":
+                                    st.caption(f"Combined Score: {chunk.get('similarity_score', 0):.4f}")
+                                    st.caption(f"  Vector: {chunk.get('vector_score', 0):.4f} | BM25: {chunk.get('bm25_score', 0):.4f}")
+                                
+                                st.text(chunk_data.get('content', ''))
                                 st.divider()
 
                         st.caption(f"⏱️ Query time: {query_time:.2f} seconds")

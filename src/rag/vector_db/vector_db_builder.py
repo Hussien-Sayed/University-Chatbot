@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -7,6 +8,19 @@ import numpy as np
 
 from src.data_utils.data_loader import DataLoader
 from src.llm.embedding_api import EmbeddingAPI
+
+try:
+    from rank_bm25 import BM25Okapi
+    BM25_AVAILABLE = True
+except ImportError:
+    BM25_AVAILABLE = False
+
+
+def normalize_text(text: str) -> str:
+    """Normalize text by lowercasing and removing punctuation/quotes."""
+    text = text.lower()
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation and quotes
+    return text
 
 
 class VectorDBBuilder:
@@ -31,6 +45,7 @@ class VectorDBBuilder:
         self.embeddings = []
         self.metadata = []
         self.index = None
+        self.bm25_index = None
 
     def load_data(self) -> List[Dict[str, Any]]:
         return self.data_loader.load_content()
@@ -87,6 +102,27 @@ class VectorDBBuilder:
         self.index = faiss.IndexFlatIP(dimension)
         self.index.add(embeddings_normalized)
 
+    def build_bm25_index(self):
+        if not BM25_AVAILABLE:
+            raise ImportError("rank-bm25 package is required. Install it with: pip install rank-bm25")
+
+        tokenized_chunks = [normalize_text(chunk['content']).split() for chunk in self.chunks]
+        print(f"[DEBUG BM25 BUILD] Total chunks: {len(tokenized_chunks)}")
+        print(f"[DEBUG BM25 BUILD] Sample chunk tokens (first 3):")
+        for i in range(min(3, len(tokenized_chunks))):
+            print(f"  Chunk {i}: {tokenized_chunks[i][:10]}...")  # Show first 10 tokens
+
+        # Check if "timing" appears in any chunk
+        timing_found = False
+        for i, tokens in enumerate(tokenized_chunks):
+            if 'timing' in tokens:
+                print(f"[DEBUG BM25 BUILD] Found 'timing' in chunk {i}: {tokens[:15]}...")
+                timing_found = True
+        if not timing_found:
+            print(f"[DEBUG BM25 BUILD] 'timing' NOT found in any chunk")
+
+        self.bm25_index = BM25Okapi(tokenized_chunks)
+
     def save_vector_db(self):
         save_path = Path(self.vdb_save_path)
         save_path.mkdir(parents=True, exist_ok=True)
@@ -95,6 +131,7 @@ class VectorDBBuilder:
             'index': self.index,
             'chunks': self.chunks,
             'embeddings': self.embeddings,
+            'bm25_index': self.bm25_index,
             'metadata': {
                 'vdb_type': self.vdb_type,
                 'chunk_size': self.chunk_size,
@@ -115,6 +152,7 @@ class VectorDBBuilder:
         self.generate_embeddings()
         embeddings_normalized = self.normalize_embeddings()
         self.build_index(embeddings_normalized)
+        self.build_bm25_index()
         self.save_vector_db()
 
         return {
