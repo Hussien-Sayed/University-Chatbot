@@ -13,6 +13,8 @@ def main():
     test_data_path = Path(os.getenv("RAG_TEST_DATA_PATH", "data/rag_test_data.json"))
     test_set_ratio = float(os.getenv("RAG_TEST_SET_RATIO", "0.2"))
     refined_data_path = os.getenv("RAG_REFINED_DATA_PATH")
+    experiment_name = os.getenv("RAG_EXPERIMENT_NAME", "baseline")
+    experiment_results_dir = os.getenv("RAG_EXPERIMENTS_DIR", "data/evaluation_results")
     
     # 1. Initialize core components
     print("Initializing components...")
@@ -29,7 +31,8 @@ def main():
         retriever=retriever,
         embedding_api=embedding_api,
         data_source_path=data_source_path,
-        test_data_path=str(test_data_path)
+        test_data_path=str(test_data_path),
+        experiment_results_dir=experiment_results_dir
     )
 
     if test_data_path.exists():
@@ -44,7 +47,7 @@ def main():
     
     # 3. Run evaluation
     print("Starting evaluation...")
-    results = evaluator.run_evaluation(test_samples)
+    results = evaluator.run_evaluation(test_samples, experiment_name=experiment_name)
     
     print("\n" + "="*40)
     print("RAGAS Evaluation Results")
