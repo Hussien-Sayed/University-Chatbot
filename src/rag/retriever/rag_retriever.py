@@ -2,7 +2,7 @@ import os
 import pickle
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import numpy as np
 
@@ -36,6 +36,13 @@ class RAGRetriever:
         self.enable_self_eval = os.getenv("ENABLE_SELF_EVAL", "false").lower() == "true"
         self.relevance_threshold = float(os.getenv("RELEVANCE_THRESHOLD", "0.3"))
         self.confidence_threshold = float(os.getenv("CONFIDENCE_THRESHOLD", "0.4"))
+
+        # Query fusion configuration
+        self.enable_query_fusion = os.getenv("ENABLE_QUERY_FUSION", "false").lower() == "true"
+        self.fusion_num_variants = int(os.getenv("FUSION_NUM_VARIANTS", "3"))
+        self.fusion_k = int(os.getenv("FUSION_K", "60"))
+        self.fusion_top_k = int(os.getenv("FUSION_TOP_K", "5"))
+        self._last_fusion_variants: List[str] = []
 
         self.index = None
         self.chunks = []
@@ -182,8 +189,133 @@ class RAGRetriever:
             'retriever_type': self.retriever_type,
             'num_chunks_to_retrieve': self.num_chunks,
             'vdb_metadata': self.metadata,
-            'self_eval_enabled': self.enable_self_eval
+            'self_eval_enabled': self.enable_self_eval,
+            'query_fusion_enabled': self.enable_query_fusion,
+            'fusion_num_variants': self.fusion_num_variants,
+            'fusion_k': self.fusion_k,
+            'fusion_top_k': self.fusion_top_k
         }
+
+    def _reciprocal_rank_fusion(
+        self,
+        results_lists: List[List[Dict[str, Any]]],
+        k: int = 60
+    ) -> List[Dict[str, Any]]:
+        """Apply Reciprocal Rank Fusion (RRF) to combine multiple ranked lists.
+
+        Args:
+            results_lists: List of ranked retrieval results (each is list of chunk dicts)
+            k: RRF constant (default 60)
+
+        Returns:
+            Fused and deduplicated results sorted by RRF score
+        """
+        # Track RRF scores by chunk ID
+        rrf_scores: Dict[int, float] = {}
+        chunk_data: Dict[int, Dict[str, Any]] = {}
+
+        for result_list in results_lists:
+            for rank, item in enumerate(result_list, start=1):
+                chunk = item['chunk']
+                chunk_id = id(chunk)  # Use object id as unique key
+
+                # Calculate RRF score contribution
+                score_contribution = 1.0 / (k + rank)
+                rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + score_contribution
+
+                # Store chunk data (keep first occurrence)
+                if chunk_id not in chunk_data:
+                    chunk_data[chunk_id] = {
+                        'chunk': chunk,
+                        'original_scores': item.get('similarity_score', 0.0),
+                        'sources': []
+                    }
+                chunk_data[chunk_id]['sources'].append({
+                    'rank': rank,
+                    'score': item.get('similarity_score', 0.0)
+                })
+
+        # Build final results with RRF scores
+        fused_results = []
+        for chunk_id, rrf_score in rrf_scores.items():
+            data = chunk_data[chunk_id]
+            fused_results.append({
+                'chunk': data['chunk'],
+                'similarity_score': rrf_score,  # Use RRF score as primary
+                'rrf_score': rrf_score,
+                'vector_score': 0.0,  # Not applicable in fusion context
+                'bm25_score': 0.0,    # Not applicable in fusion context
+                'fusion_sources': len(data['sources'])
+            })
+
+        # Sort by RRF score descending
+        fused_results.sort(key=lambda x: x['rrf_score'], reverse=True)
+        return fused_results
+
+    def _retrieve_with_fusion(
+        self,
+        query: str,
+        query_embedding: List[float]
+    ) -> List[Dict[str, Any]]:
+        """Retrieve chunks using query fusion (RAG-Fusion).
+
+        Generates query variants, retrieves for each, then fuses results with RRF.
+
+        Args:
+            query: Original user query
+            query_embedding: Embedding of original query
+
+        Returns:
+            Fused and ranked chunk list
+        """
+        from src.llm.embedding_api import EmbeddingAPI
+
+        # Generate query variants
+        query_variants = self.llm_api.generate_query_variants(query, self.fusion_num_variants)
+        self._last_fusion_variants = query_variants  # Store for UI display
+
+        # Initialize embedding API for variant embeddings
+        embedding_api = EmbeddingAPI()
+
+        # Retrieve results for each variant
+        all_results = []
+        for variant in query_variants:
+            variant_embedding = embedding_api.generate_embedding(variant)
+
+            if self.retriever_type == "vector":
+                results = self._retrieve_vector(variant_embedding)
+            elif self.retriever_type == "bm25":
+                results = self._retrieve_bm25(variant)
+            elif self.retriever_type == "hybrid":
+                results = self._retrieve_hybrid(variant, variant_embedding)
+            else:
+                results = self._retrieve_vector(variant_embedding)
+
+            all_results.append(results)
+
+        # Apply RRF to fuse results
+        fused = self._reciprocal_rank_fusion(all_results, k=self.fusion_k)
+
+        # Return top-k
+        return fused[:self.fusion_top_k]
+
+    def retrieve_chunks(self, query: str, query_embedding: List[float]) -> List[Dict[str, Any]]:
+        """Retrieve chunks using configured retrieval strategy.
+
+        If query fusion is enabled, uses RAG-Fusion with query variants and RRF.
+        Otherwise uses standard retrieval (vector/bm25/hybrid).
+        """
+        if self.enable_query_fusion:
+            return self._retrieve_with_fusion(query, query_embedding)
+
+        if self.retriever_type == "vector":
+            return self._retrieve_vector(query_embedding)
+        elif self.retriever_type == "bm25":
+            return self._retrieve_bm25(query)
+        elif self.retriever_type == "hybrid":
+            return self._retrieve_hybrid(query, query_embedding)
+        else:
+            raise ValueError(f"Unknown retriever type: {self.retriever_type}. Must be 'vector', 'bm25', or 'hybrid'.")
 
     def _filter_by_relevance(self, retrieved_chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter chunks based on relevance score threshold. Adapts to retrieval type."""

@@ -315,6 +315,9 @@ class RAGEvaluator:
                     self._save_experiment_progress(experiment_name, query_results, failures, len(test_samples))
                 continue
 
+            # Extract fusion metadata
+            fusion = pipeline_result.get('fusion', {})
+            
             query_result = {
                 "sample_index": sample_index,
                 "question": q,
@@ -329,7 +332,12 @@ class RAGEvaluator:
                 "self_eval_chunks_used": self_eval.get('chunks_used', 0),
                 "self_eval_avg_relevance": self_eval.get('avg_relevance', None),
                 "self_eval_confidence": self_eval.get('confidence', None),
-                "self_eval_fallback_triggered": self_eval.get('fallback_triggered', False)
+                "self_eval_fallback_triggered": self_eval.get('fallback_triggered', False),
+                "fusion_enabled": fusion.get('enabled', False),
+                "fusion_num_variants": fusion.get('num_variants', None),
+                "fusion_k": fusion.get('k', None),
+                "fusion_top_k": fusion.get('top_k', None),
+                "fusion_query_variants": fusion.get('query_variants', [])
             }
 
             if experiment_name:

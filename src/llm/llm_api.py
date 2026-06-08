@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import List, Optional
 
 
 class LLMAPI:
@@ -107,6 +107,59 @@ Respond with only a number between 0 and 1."""
             return 0.5
         except Exception:
             return 0.5
+    def generate_query_variants(self, query: str, num_variants: int = 3) -> List[str]:
+        """Generate semantically similar query variations for RAG-Fusion.
+
+        Args:
+            query: Original user query
+            num_variants: Number of query variations to generate
+
+        Returns:
+            List of query strings including original + generated variants
+        """
+        if not query or not query.strip():
+            return [query]
+
+        prompt = f"""Generate {num_variants} semantically similar variations of the following query.
+Each variation should ask the same thing in different words or from a different angle.
+
+Original query: {query}
+
+Return ONLY the query variations, one per line. Do not include numbering, bullets, or explanations.
+Each variation should be a complete question."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_completion_tokens=256,
+                top_p=1,
+                stream=False
+            )
+            content = response.choices[0].message.content.strip()
+            if not content:
+                return [query]
+
+            # Parse variants (one per line, clean up)
+            lines = [line.strip() for line in content.split('\n') if line.strip()]
+            variants = [query]  # Always include original
+
+            for line in lines:
+                # Remove common prefixes like "1.", "-", "*"
+                cleaned = line
+                if cleaned and len(cleaned) > 10:  # Sanity check for valid query
+                    # Avoid duplicates
+                    if cleaned.lower() not in [v.lower() for v in variants]:
+                        variants.append(cleaned)
+
+                if len(variants) >= num_variants + 1:
+                    break
+
+            return variants[:num_variants + 1]  # Original + N variants
+        except Exception:
+            return [query]  # Fallback to original on error
+
     def generate_response_with_context(self, prompt: str, context: str, max_tokens: int = 512, temperature: float = 0.7) -> str:
         if not prompt or not prompt.strip():
             raise ValueError("prompt cannot be empty")

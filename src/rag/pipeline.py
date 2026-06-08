@@ -68,6 +68,9 @@ class RAGPipeline:
         # Get retrieved chunks for context extraction
         retrieved_chunks = self.retriever.retrieve_chunks(query, query_embedding)
         contexts = [item['chunk'].get('content', '') for item in retrieved_chunks]
+
+        # Get fusion variants if enabled
+        fusion_variants = self.retriever._last_fusion_variants if self.retriever.enable_query_fusion else []
         
         query_time_seconds = time.time() - query_start_time
         
@@ -90,6 +93,13 @@ class RAGPipeline:
                 "confidence": eval_metadata.get('response_confidence', None),
                 "fallback_triggered": eval_metadata.get('fallback_triggered', False)
             },
+            "fusion": {
+                "enabled": self.retriever.enable_query_fusion,
+                "num_variants": self.retriever.fusion_num_variants if self.retriever.enable_query_fusion else None,
+                "k": self.retriever.fusion_k if self.retriever.enable_query_fusion else None,
+                "top_k": self.retriever.fusion_top_k if self.retriever.enable_query_fusion else None,
+                "query_variants": fusion_variants
+            },
             "retriever_type": self.retriever.retriever_type,
             "query_time_seconds": query_time_seconds
         }
@@ -109,5 +119,9 @@ class RAGPipeline:
             "self_eval_enabled": self.retriever.enable_self_eval,
             "relevance_threshold": self.retriever.relevance_threshold,
             "confidence_threshold": self.retriever.confidence_threshold,
+            "query_fusion_enabled": self.retriever.enable_query_fusion,
+            "fusion_num_variants": self.retriever.fusion_num_variants,
+            "fusion_k": self.retriever.fusion_k,
+            "fusion_top_k": self.retriever.fusion_top_k,
             "retrieval_info": self.retriever.get_retrieval_info()
         }

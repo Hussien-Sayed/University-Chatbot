@@ -144,6 +144,12 @@ def chat_page():
                         st.markdown(f"**Chunk {i}** (Source: `{chunk.get('source', 'unknown')}`)")
                         st.text(chunk.get('content', ''))
                         st.divider()
+            if "fusion" in message and message["fusion"].get('enabled') and message["fusion"].get('query_variants'):
+                with st.expander("🔀 Query Fusion Variants"):
+                    fusion = message["fusion"]
+                    st.write(f"**RRF k={fusion.get('k', 60)}, Top {fusion.get('top_k', 5)} chunks**")
+                    for i, variant in enumerate(fusion['query_variants'], 1):
+                        st.write(f"{i}. {variant}")
             if "query_time" in message:
                 st.caption(f"⏱️ Query time: {message['query_time']:.2f} seconds")
 
@@ -165,6 +171,7 @@ def chat_page():
                         
                         response = result['response']
                         self_eval = result['self_eval']
+                        fusion = result.get('fusion', {})
                         retrieved_chunks = result['retrieved_chunks']
                         query_time = result['query_time_seconds']
 
@@ -186,6 +193,13 @@ def chat_page():
                                     st.warning("⚠️ Low confidence - fallback response triggered")
                                 if not self_eval.get('used_context'):
                                     st.info("ℹ️ No relevant context found - answered without retrieval")
+
+                        # Show fusion query variants if enabled
+                        if fusion.get('enabled') and fusion.get('query_variants'):
+                            with st.expander("🔀 Query Fusion Variants"):
+                                st.write(f"**RRF k={fusion.get('k', 60)}, Top {fusion.get('top_k', 5)} chunks**")
+                                for i, variant in enumerate(fusion['query_variants'], 1):
+                                    st.write(f"{i}. {variant}")
 
                         with st.expander("📄 Retrieved Chunks"):
                             retrieval_type = result['retriever_type']
@@ -212,7 +226,8 @@ def chat_page():
                             "content": response,
                             "retrieved_chunks": [item.get('chunk', {}) for item in retrieved_chunks],
                             "query_time": query_time,
-                            "evaluation": self_eval
+                            "evaluation": self_eval,
+                            "fusion": fusion
                         }
                         st.session_state.messages.append(message_data)
                     except Exception as e:
@@ -662,6 +677,48 @@ def settings_page():
                 disabled=not enable_self_eval
             )
     
+    # Query Fusion Settings (RAG-Fusion)
+    with st.expander("🔀 Query Fusion (RAG-Fusion)", expanded=True):
+        enable_query_fusion = st.checkbox(
+            "ENABLE_QUERY_FUSION",
+            value=current_env.get("ENABLE_QUERY_FUSION", os.getenv("ENABLE_QUERY_FUSION", "false")).lower() == "true",
+            help="Enable RAG-Fusion with query variants and reciprocal rank fusion"
+        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fusion_num_variants = st.number_input(
+                "FUSION_NUM_VARIANTS",
+                min_value=1,
+                max_value=10,
+                value=int(current_env.get("FUSION_NUM_VARIANTS", os.getenv("FUSION_NUM_VARIANTS", "3"))),
+                step=1,
+                help="Number of query variations to generate",
+                disabled=not enable_query_fusion
+            )
+            
+            fusion_top_k = st.number_input(
+                "FUSION_TOP_K",
+                min_value=1,
+                max_value=20,
+                value=int(current_env.get("FUSION_TOP_K", os.getenv("FUSION_TOP_K", "5"))),
+                step=1,
+                help="Number of chunks to return after fusion",
+                disabled=not enable_query_fusion
+            )
+        
+        with col2:
+            fusion_k = st.number_input(
+                "FUSION_K",
+                min_value=1,
+                max_value=100,
+                value=int(current_env.get("FUSION_K", os.getenv("FUSION_K", "60"))),
+                step=5,
+                help="RRF constant (default 60, higher = less rank discrimination)",
+                disabled=not enable_query_fusion
+            )
+    
     # Document Structure Mode
     with st.expander("📄 Document Processing", expanded=True):
         doc_mode = st.selectbox(
@@ -694,6 +751,10 @@ def settings_page():
                 f"ENABLE_SELF_EVAL={str(enable_self_eval).lower()}",
                 f"RELEVANCE_THRESHOLD={relevance_threshold}",
                 f"CONFIDENCE_THRESHOLD={confidence_threshold}",
+                f"ENABLE_QUERY_FUSION={str(enable_query_fusion).lower()}",
+                f"FUSION_NUM_VARIANTS={fusion_num_variants}",
+                f"FUSION_K={fusion_k}",
+                f"FUSION_TOP_K={fusion_top_k}",
                 f"RAG_EXPERIMENTS_DIR={results_dir}",
             ]
             
@@ -717,6 +778,10 @@ def settings_page():
             os.environ["ENABLE_SELF_EVAL"] = str(enable_self_eval).lower()
             os.environ["RELEVANCE_THRESHOLD"] = str(relevance_threshold)
             os.environ["CONFIDENCE_THRESHOLD"] = str(confidence_threshold)
+            os.environ["ENABLE_QUERY_FUSION"] = str(enable_query_fusion).lower()
+            os.environ["FUSION_NUM_VARIANTS"] = str(fusion_num_variants)
+            os.environ["FUSION_K"] = str(fusion_k)
+            os.environ["FUSION_TOP_K"] = str(fusion_top_k)
             os.environ["RAG_EXPERIMENTS_DIR"] = results_dir
             
             st.success("✅ Settings saved to .env and applied!")
