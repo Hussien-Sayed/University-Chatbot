@@ -16,22 +16,28 @@ from tqdm import tqdm
 from src.llm.embedding_api import EmbeddingAPI
 from src.llm.llm_api import LLMAPI
 from src.rag.retriever.rag_retriever import RAGRetriever
+from src.rag.pipeline import RAGPipeline
 
 class RAGEvaluator:
     """Class for evaluating RAG pipeline performance using RAGAS metrics"""
 
     def __init__(
         self,
-        retriever: RAGRetriever,
-        embedding_api: EmbeddingAPI,
+        retriever: RAGRetriever = None,
+        embedding_api: EmbeddingAPI = None,
         data_source_path: Optional[str] = None,
         test_data_path: Optional[str] = None,
         experiment_results_dir: Optional[str] = None,
         llm_model: str = "llama-3.1-8b-instant",
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ):
-        self.retriever = retriever
-        self.embedding_api = embedding_api
+        # Initialize centralized pipeline for consistent RAG processing
+        self.pipeline = RAGPipeline(
+            vector_db_path=os.getenv("VDB_SAVE_PATH", "data/vector_db"),
+            llm_api=retriever.llm_api if retriever else None,
+            embedding_api=embedding_api
+        )
+        # Keep references for backward compatibility
         self.data_source_path = data_source_path
         self.test_data_path = test_data_path
         self.experiment_results_dir = Path(experiment_results_dir or os.getenv("RAG_EXPERIMENTS_DIR", "data/evaluation_results"))
@@ -288,17 +294,13 @@ class RAGEvaluator:
 
             q = sample["question"]
 
-            query_start_time = time.time()
             try:
-                q_emb = self.embedding_api.generate_embedding(q)
-                # Use self-evaluation method which returns response + evaluation metadata
-                result = self.retriever.generate_response_with_self_eval(q, q_emb)
-                ans = result['response']
-                eval_metadata = result.get('evaluation', {})
-                # Get contexts from retrieved chunks for RAGAS evaluation
-                retrieved_chunks = self.retriever.retrieve_chunks(q, q_emb)
-                ctx = [item['chunk'].get('content', '') for item in retrieved_chunks]
-                query_time_seconds = time.time() - query_start_time
+                # Use centralized RAG pipeline for consistent processing
+                pipeline_result = self.pipeline.run(q)
+                ans = pipeline_result['response']
+                ctx = pipeline_result['contexts']
+                self_eval = pipeline_result['self_eval']
+                query_time_seconds = pipeline_result['query_time_seconds']
             except Exception as exc:
                 failures.append({
                     "sample_index": sample_index,
@@ -321,13 +323,13 @@ class RAGEvaluator:
                 "ground_truth": sample["ground_truth"],
                 "query_time_seconds": query_time_seconds,
                 "exists_in_source": sample.get("exists_in_source", True),
-                "self_eval_enabled": eval_metadata.get('self_eval_enabled', False),
-                "self_eval_used_context": eval_metadata.get('used_context', False),
-                "self_eval_chunks_retrieved": eval_metadata.get('chunks_retrieved', 0),
-                "self_eval_chunks_used": eval_metadata.get('chunks_used', 0),
-                "self_eval_avg_relevance": eval_metadata.get('avg_llm_relevance', None),
-                "self_eval_confidence": eval_metadata.get('response_confidence', None),
-                "self_eval_fallback_triggered": eval_metadata.get('fallback_triggered', False)
+                "self_eval_enabled": self_eval.get('enabled', False),
+                "self_eval_used_context": self_eval.get('used_context', False),
+                "self_eval_chunks_retrieved": self_eval.get('chunks_retrieved', 0),
+                "self_eval_chunks_used": self_eval.get('chunks_used', 0),
+                "self_eval_avg_relevance": self_eval.get('avg_relevance', None),
+                "self_eval_confidence": self_eval.get('confidence', None),
+                "self_eval_fallback_triggered": self_eval.get('fallback_triggered', False)
             }
 
             if experiment_name:
