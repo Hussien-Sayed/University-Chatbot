@@ -138,3 +138,148 @@ class TestRAGRetriever:
         assert info['retriever_type'] == "cosine_similarity"
         assert info['num_chunks_to_retrieve'] == 3
         assert 'vdb_metadata' in info
+
+    def test_self_eval_disabled_by_default(self, rag_retriever):
+        assert rag_retriever.enable_self_eval is False
+        assert rag_retriever.relevance_threshold == 0.3
+        assert rag_retriever.confidence_threshold == 0.4
+
+    def test_filter_by_relevance_vector(self, rag_retriever):
+        rag_retriever.retriever_type = "vector"
+        rag_retriever.relevance_threshold = 0.5
+
+        chunks = [
+            {'chunk': {'content': 'High relevance'}, 'similarity_score': 0.9},
+            {'chunk': {'content': 'Medium relevance'}, 'similarity_score': 0.6},
+            {'chunk': {'content': 'Low relevance'}, 'similarity_score': 0.3},
+        ]
+
+        filtered = rag_retriever._filter_by_relevance(chunks)
+
+        assert len(filtered) == 2
+        assert filtered[0]['chunk']['content'] == 'High relevance'
+        assert filtered[1]['chunk']['content'] == 'Medium relevance'
+
+    def test_filter_by_relevance_bm25(self, rag_retriever):
+        rag_retriever.retriever_type = "bm25"
+        rag_retriever.relevance_threshold = 0.5
+
+        chunks = [
+            {'chunk': {'content': 'High'}, 'bm25_score': 10.0},
+            {'chunk': {'content': 'Medium'}, 'bm25_score': 6.0},
+            {'chunk': {'content': 'Low'}, 'bm25_score': 3.0},
+        ]
+
+        filtered = rag_retriever._filter_by_relevance(chunks)
+
+        assert len(filtered) == 2
+        # Should normalize to max (10.0) and filter by threshold 0.5
+        assert filtered[0]['bm25_score'] == 10.0
+        assert filtered[1]['bm25_score'] == 6.0
+
+    def test_filter_by_relevance_empty(self, rag_retriever):
+        rag_retriever.retriever_type = "vector"
+
+        filtered = rag_retriever._filter_by_relevance([])
+
+        assert filtered == []
+
+    def test_evaluate_chunks_with_llm(self, rag_retriever, mock_llm_api):
+        mock_llm_api.evaluate_chunk_relevance.return_value = 0.8
+
+        chunks = [
+            {'chunk': {'content': 'Chunk 1'}},
+            {'chunk': {'content': 'Chunk 2'}},
+        ]
+
+        evaluated = rag_retriever._evaluate_chunks_with_llm("query", chunks)
+
+        assert len(evaluated) == 2
+        assert evaluated[0]['llm_relevance'] == 0.8
+        assert evaluated[1]['llm_relevance'] == 0.8
+        assert mock_llm_api.evaluate_chunk_relevance.call_count == 2
+
+    def test_should_use_context_with_self_eval(self, rag_retriever):
+        rag_retriever.enable_self_eval = True
+        rag_retriever.relevance_threshold = 0.5
+
+        chunks = [
+            {'chunk': {'content': 'Relevant'}, 'llm_relevance': 0.8},
+            {'chunk': {'content': 'Not relevant'}, 'llm_relevance': 0.3},
+        ]
+
+        should_use = rag_retriever._should_use_context("query", chunks)
+
+        assert should_use is True
+
+    def test_should_use_context_no_relevant_chunks(self, rag_retriever):
+        rag_retriever.enable_self_eval = True
+        rag_retriever.relevance_threshold = 0.5
+
+        chunks = [
+            {'chunk': {'content': 'Not relevant 1'}, 'llm_relevance': 0.3},
+            {'chunk': {'content': 'Not relevant 2'}, 'llm_relevance': 0.2},
+        ]
+
+        should_use = rag_retriever._should_use_context("query", chunks)
+
+        assert should_use is False
+
+    def test_generate_response_with_self_eval_disabled(self, rag_retriever, mock_llm_api):
+        rag_retriever.enable_self_eval = False
+        rag_retriever.index = MagicMock()
+        rag_retriever.index.search.return_value = (
+            np.array([[0.95, 0.85, 0.75]]),
+            np.array([[0, 1, 2]])
+        )
+
+        query = "What is AI?"
+        query_embedding = [0.1, 0.2, 0.3]
+
+        result = rag_retriever.generate_response_with_self_eval(query, query_embedding)
+
+        assert 'response' in result
+        assert 'evaluation' in result
+        assert result['evaluation']['self_eval_enabled'] is False
+        assert result['evaluation']['used_context'] is True
+        mock_llm_api.generate_response_with_context.assert_called_once()
+
+    def test_generate_response_with_self_eval_fallback(self, rag_retriever, mock_llm_api):
+        rag_retriever.enable_self_eval = True
+        rag_retriever.relevance_threshold = 0.3
+        rag_retriever.confidence_threshold = 0.5
+        rag_retriever.index = MagicMock()
+        rag_retriever.index.search.return_value = (
+            np.array([[0.95, 0.85, 0.75]]),
+            np.array([[0, 1, 2]])
+        )
+        mock_llm_api.evaluate_chunk_relevance.return_value = 0.9
+        mock_llm_api.evaluate_response_confidence.return_value = 0.3  # Low confidence
+        mock_llm_api.generate_response_with_context.return_value = "Generated response"
+
+        query = "What is AI?"
+        query_embedding = [0.1, 0.2, 0.3]
+
+        result = rag_retriever.generate_response_with_self_eval(query, query_embedding)
+
+        assert 'fallback_triggered' in result['evaluation']
+        assert result['evaluation']['fallback_triggered'] is True
+        assert "don't have enough reliable information" in result['response']
+
+    def test_generate_response_no_chunks_pass_filter(self, rag_retriever, mock_llm_api):
+        rag_retriever.enable_self_eval = True
+        rag_retriever.relevance_threshold = 0.9  # High threshold
+        rag_retriever.index = MagicMock()
+        rag_retriever.index.search.return_value = (
+            np.array([[0.1, 0.2, 0.3]]),  # Low scores
+            np.array([[0, 1, 2]])
+        )
+
+        query = "What is AI?"
+        query_embedding = [0.1, 0.2, 0.3]
+
+        result = rag_retriever.generate_response_with_self_eval(query, query_embedding)
+
+        assert result['evaluation']['used_context'] is False
+        assert result['evaluation']['chunks_after_score_filter'] == 0
+        mock_llm_api.generate_response.assert_called_once()

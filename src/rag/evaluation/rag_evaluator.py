@@ -68,7 +68,10 @@ class RAGEvaluator:
             json.dump(self._json_safe(data), f, indent=2)
 
     def _save_samples_csv(self, path: Path, samples: List[Dict[str, Any]]) -> None:
-        base_fields = ["sample_index", "question", "answer", "contexts", "ground_truth"]
+        base_fields = ["sample_index", "question", "answer", "contexts", "ground_truth", "exists_in_source",
+                       "self_eval_enabled", "self_eval_used_context", "self_eval_chunks_retrieved",
+                       "self_eval_chunks_used", "self_eval_avg_relevance", "self_eval_confidence",
+                       "self_eval_fallback_triggered"]
         extra_fields = sorted({
             key
             for sample in samples
@@ -119,8 +122,8 @@ class RAGEvaluator:
 
         return cleaned_query_results, cleaned_failures
 
-    def _calculate_summary_scores(self, query_results: List[Dict[str, Any]]) -> Dict[str, float]:
-        excluded_fields = {"sample_index", "question", "answer", "contexts", "ground_truth"}
+    def _calculate_summary_scores(self, query_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        excluded_fields = {"sample_index", "question", "answer", "contexts", "ground_truth", "exists_in_source"}
         metric_names = sorted({
             key
             for sample in query_results
@@ -129,6 +132,7 @@ class RAGEvaluator:
         })
         summary_scores = {}
 
+        # Calculate overall scores
         for metric_name in metric_names:
             values = [
                 sample[metric_name]
@@ -137,6 +141,37 @@ class RAGEvaluator:
             ]
             if values:
                 summary_scores[metric_name] = sum(values) / len(values)
+
+        # Calculate breakdown by exists_in_source
+        in_source_samples = [s for s in query_results if s.get("exists_in_source", True) is True]
+        not_in_source_samples = [s for s in query_results if s.get("exists_in_source", True) is False]
+
+        breakdown = {
+            "in_source": {"count": len(in_source_samples)},
+            "not_in_source": {"count": len(not_in_source_samples)}
+        }
+
+        # Calculate metrics for in_source samples
+        for metric_name in metric_names:
+            values = [
+                sample[metric_name]
+                for sample in in_source_samples
+                if isinstance(sample.get(metric_name), (int, float))
+            ]
+            if values:
+                breakdown["in_source"][metric_name] = sum(values) / len(values)
+
+        # Calculate metrics for not_in_source samples
+        for metric_name in metric_names:
+            values = [
+                sample[metric_name]
+                for sample in not_in_source_samples
+                if isinstance(sample.get(metric_name), (int, float))
+            ]
+            if values:
+                breakdown["not_in_source"][metric_name] = sum(values) / len(values)
+
+        summary_scores["by_exists_in_source"] = breakdown
 
         return summary_scores
 
@@ -204,6 +239,8 @@ class RAGEvaluator:
         self._write_json(paths["failures"], failures)
 
         result_df = result.to_pandas()
+        # Note: For RAGAS results, we don't have exists_in_source directly in result_df
+        # The samples CSV/JSON from _save_experiment_progress will have this field
         result_df.to_json(paths["samples_json"], orient="records", indent=2)
         result_df.to_csv(paths["samples_csv"], index=False)
 
@@ -254,9 +291,13 @@ class RAGEvaluator:
             query_start_time = time.time()
             try:
                 q_emb = self.embedding_api.generate_embedding(q)
-                retrieved_chunks = self.retriever.retrieve_chunks(q_emb)
+                # Use self-evaluation method which returns response + evaluation metadata
+                result = self.retriever.generate_response_with_self_eval(q, q_emb)
+                ans = result['response']
+                eval_metadata = result.get('evaluation', {})
+                # Get contexts from retrieved chunks for RAGAS evaluation
+                retrieved_chunks = self.retriever.retrieve_chunks(q, q_emb)
                 ctx = [item['chunk'].get('content', '') for item in retrieved_chunks]
-                ans = self.retriever.generate_response(q, q_emb)
                 query_time_seconds = time.time() - query_start_time
             except Exception as exc:
                 failures.append({
@@ -264,6 +305,7 @@ class RAGEvaluator:
                     "stage": "query_generation",
                     "question": q,
                     "ground_truth": sample.get("ground_truth"),
+                    "exists_in_source": sample.get("exists_in_source", True),
                     "error_type": type(exc).__name__,
                     "error_message": str(exc)
                 })
@@ -277,7 +319,15 @@ class RAGEvaluator:
                 "answer": ans,
                 "contexts": ctx,
                 "ground_truth": sample["ground_truth"],
-                "query_time_seconds": query_time_seconds
+                "query_time_seconds": query_time_seconds,
+                "exists_in_source": sample.get("exists_in_source", True),
+                "self_eval_enabled": eval_metadata.get('self_eval_enabled', False),
+                "self_eval_used_context": eval_metadata.get('used_context', False),
+                "self_eval_chunks_retrieved": eval_metadata.get('chunks_retrieved', 0),
+                "self_eval_chunks_used": eval_metadata.get('chunks_used', 0),
+                "self_eval_avg_relevance": eval_metadata.get('avg_llm_relevance', None),
+                "self_eval_confidence": eval_metadata.get('response_confidence', None),
+                "self_eval_fallback_triggered": eval_metadata.get('fallback_triggered', False)
             }
 
             if experiment_name:
@@ -311,6 +361,7 @@ class RAGEvaluator:
                     "answer": ans,
                     "contexts": ctx,
                     "ground_truth": sample.get("ground_truth"),
+                    "exists_in_source": sample.get("exists_in_source", True),
                     "error_type": type(exc).__name__,
                     "error_message": str(exc)
                 })

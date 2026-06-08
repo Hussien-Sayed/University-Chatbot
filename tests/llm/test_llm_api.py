@@ -84,3 +84,77 @@ class TestLLMAPI:
             with patch.dict(os.environ, {"GROQ_API_KEY": "test_key"}):
                 api = LLMAPI(model_name="custom-model")
                 assert api.model_name == "custom-model"
+
+    def test_evaluate_chunk_relevance(self, llm_api):
+        mock_choice = MagicMock()
+        mock_choice.message.content = "0.85"
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        llm_api.client.chat.completions.create.return_value = mock_response
+
+        result = llm_api.evaluate_chunk_relevance("What is AI?", "AI is artificial intelligence.")
+
+        assert result == 0.85
+        assert llm_api.client.chat.completions.create.call_args[1]['temperature'] == 0.1
+        assert llm_api.client.chat.completions.create.call_args[1]['max_completion_tokens'] == 10
+
+    def test_evaluate_chunk_relevance_parsing_variants(self, llm_api):
+        test_cases = [
+            ("0.75", 0.75),
+            ("0.5", 0.5),
+            ("1", 1.0),
+            ("0", 0.0),
+            (".8", 0.8),
+            ("The score is 0.65", 0.65),
+        ]
+
+        for content, expected in test_cases:
+            mock_choice = MagicMock()
+            mock_choice.message.content = content
+            mock_response = MagicMock()
+            mock_response.choices = [mock_choice]
+            llm_api.client.chat.completions.create.return_value = mock_response
+
+            result = llm_api.evaluate_chunk_relevance("query", "chunk")
+            assert result == expected, f"Failed for content: {content}"
+
+    def test_evaluate_chunk_relevance_default_on_error(self, llm_api):
+        llm_api.client.chat.completions.create.side_effect = Exception("API error")
+
+        result = llm_api.evaluate_chunk_relevance("query", "chunk")
+
+        assert result == 0.5  # Default value on error
+
+    def test_evaluate_response_confidence(self, llm_api):
+        mock_choice = MagicMock()
+        mock_choice.message.content = "0.92"
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        llm_api.client.chat.completions.create.return_value = mock_response
+
+        result = llm_api.evaluate_response_confidence(
+            "What is AI?",
+            "AI is a technology.",
+            "Context about AI"
+        )
+
+        assert result == 0.92
+        assert llm_api.client.chat.completions.create.call_args[1]['temperature'] == 0.1
+
+    def test_evaluate_response_confidence_clamping(self, llm_api):
+        mock_choice = MagicMock()
+        mock_choice.message.content = "1.5"  # Above 1, should be clamped
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        llm_api.client.chat.completions.create.return_value = mock_response
+
+        result = llm_api.evaluate_response_confidence("q", "r", "c")
+
+        assert result == 1.0  # Clamped to 1.0
+
+    def test_evaluate_response_confidence_default_on_error(self, llm_api):
+        llm_api.client.chat.completions.create.side_effect = Exception("API error")
+
+        result = llm_api.evaluate_response_confidence("query", "response", "context")
+
+        assert result == 0.5  # Default value on error

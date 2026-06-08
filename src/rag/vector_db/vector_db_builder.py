@@ -107,20 +107,6 @@ class VectorDBBuilder:
             raise ImportError("rank-bm25 package is required. Install it with: pip install rank-bm25")
 
         tokenized_chunks = [normalize_text(chunk['content']).split() for chunk in self.chunks]
-        print(f"[DEBUG BM25 BUILD] Total chunks: {len(tokenized_chunks)}")
-        print(f"[DEBUG BM25 BUILD] Sample chunk tokens (first 3):")
-        for i in range(min(3, len(tokenized_chunks))):
-            print(f"  Chunk {i}: {tokenized_chunks[i][:10]}...")  # Show first 10 tokens
-
-        # Check if "timing" appears in any chunk
-        timing_found = False
-        for i, tokens in enumerate(tokenized_chunks):
-            if 'timing' in tokens:
-                print(f"[DEBUG BM25 BUILD] Found 'timing' in chunk {i}: {tokens[:15]}...")
-                timing_found = True
-        if not timing_found:
-            print(f"[DEBUG BM25 BUILD] 'timing' NOT found in any chunk")
-
         self.bm25_index = BM25Okapi(tokenized_chunks)
 
     def save_vector_db(self):

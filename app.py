@@ -131,18 +131,41 @@ def chat_page():
 
                         query_start = time.time()
                         query_embedding = embedding_api.generate_embedding(query)
-                        retrieved_chunks = retriever.retrieve_chunks(query, query_embedding)
-                        response = retriever.generate_response(query, query_embedding)
+
+                        # Use new self-evaluation method
+                        result = retriever.generate_response_with_self_eval(query, query_embedding)
+                        response = result['response']
+                        eval_metadata = result.get('evaluation', {})
+
                         query_time = time.time() - query_start
 
                         st.markdown(response)
 
+                        # Show self-evaluation info if enabled
+                        if eval_metadata.get('self_eval_enabled'):
+                            with st.expander("🧠 Self-Evaluation Details"):
+                                st.write(f"**Retrieved:** {eval_metadata.get('chunks_retrieved', 0)} chunks")
+                                st.write(f"**After score filter:** {eval_metadata.get('chunks_after_score_filter', 0)} chunks")
+                                st.write(f"**Chunks used:** {eval_metadata.get('chunks_used', 0)} chunks")
+                                if 'avg_llm_relevance' in eval_metadata:
+                                    st.write(f"**Avg LLM relevance:** {eval_metadata['avg_llm_relevance']:.2f}")
+                                if 'response_confidence' in eval_metadata:
+                                    confidence = eval_metadata['response_confidence']
+                                    color = "🟢" if confidence >= 0.7 else "🟡" if confidence >= 0.4 else "🔴"
+                                    st.write(f"**Response confidence:** {color} {confidence:.2f}")
+                                if eval_metadata.get('fallback_triggered'):
+                                    st.warning("⚠️ Low confidence - fallback response triggered")
+                                if not eval_metadata.get('used_context'):
+                                    st.info("ℹ️ No relevant context found - answered without retrieval")
+
                         with st.expander("📄 Retrieved Chunks"):
+                            # Re-retrieve to show chunks (if self-eval filtered them)
+                            retrieved_chunks = retriever.retrieve_chunks(query, query_embedding)
                             retrieval_type = retriever.retriever_type
                             for i, chunk in enumerate(retrieved_chunks, 1):
                                 chunk_data = chunk.get('chunk', {})
                                 st.markdown(f"**Chunk {i}** (Source: `{chunk_data.get('source', 'unknown')}`)")
-                                
+
                                 # Display scores based on retrieval type
                                 if retrieval_type == "vector":
                                     st.caption(f"Vector Similarity: {chunk.get('vector_score', 0):.4f}")
@@ -151,7 +174,7 @@ def chat_page():
                                 elif retrieval_type == "hybrid":
                                     st.caption(f"Combined Score: {chunk.get('similarity_score', 0):.4f}")
                                     st.caption(f"  Vector: {chunk.get('vector_score', 0):.4f} | BM25: {chunk.get('bm25_score', 0):.4f}")
-                                
+
                                 st.text(chunk_data.get('content', ''))
                                 st.divider()
 
@@ -161,7 +184,8 @@ def chat_page():
                             "role": "assistant",
                             "content": response,
                             "retrieved_chunks": [item.get('chunk', {}) for item in retrieved_chunks],
-                            "query_time": query_time
+                            "query_time": query_time,
+                            "evaluation": eval_metadata
                         }
                         st.session_state.messages.append(message_data)
                     except Exception as e:

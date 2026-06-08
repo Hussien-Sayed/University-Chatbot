@@ -1,0 +1,457 @@
+[
+  {
+    "question": "whatsup",
+    "ground_truth": "Good to see you again!",
+    "exists_in_source": true
+  },
+  {
+    "question": "How are you?",
+    "ground_truth": "Good to see you again!",
+    "exists_in_source": true
+  },
+  {
+    "question": "See you later",
+    "ground_truth": "Come back soon",
+    "exists_in_source": true
+  },
+  {
+    "question": "gtg",
+    "ground_truth": "Talk to you later",
+    "exists_in_source": true
+  },
+  {
+    "question": "what is the name of your developers",
+    "ground_truth": "I was developed by the Virtual AI Lab at ChatTech University.",
+    "exists_in_source": true
+  },
+  {
+    "question": "your creators",
+    "ground_truth": "I was developed by the Virtual AI Lab at ChatTech University.",
+    "exists_in_source": true
+  },
+  {
+    "question": "developers",
+    "ground_truth": "I was developed by the Virtual AI Lab at ChatTech University.",
+    "exists_in_source": true
+  },
+  {
+    "question": "who is this",
+    "ground_truth": "I'm Mind Reader",
+    "exists_in_source": true
+  },
+  {
+    "question": "what are you",
+    "ground_truth": "You can call me Mind Reader.",
+    "exists_in_source": true
+  },
+  {
+    "question": "your name",
+    "ground_truth": "I am your helper",
+    "exists_in_source": true
+  },
+  {
+    "question": "when should i come to college",
+    "ground_truth": "ChatTech University is open from 8:00 AM to 6:00 PM, Monday through Saturday.",
+    "exists_in_source": true
+  },
+  {
+    "question": "working days",
+    "ground_truth": "ChatTech University is open from 8:00 AM to 6:00 PM, Monday through Saturday.",
+    "exists_in_source": true
+  },
+  {
+    "question": "when are you guys open",
+    "ground_truth": "ChatTech University is open from 8:00 AM to 6:00 PM, Monday through Saturday.",
+    "exists_in_source": true
+  },
+  {
+    "question": "more info",
+    "ground_truth": "You can contact ChatTech University at: +123-800-555",
+    "exists_in_source": true
+  },
+  {
+    "question": "phone number",
+    "ground_truth": "You can contact ChatTech University at: +123-800-555",
+    "exists_in_source": true
+  },
+  {
+    "question": "how can i call you",
+    "ground_truth": "You can contact ChatTech University at: +123-800-555",
+    "exists_in_source": true
+  },
+  {
+    "question": "computer",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence.",
+    "exists_in_source": true
+  },
+  {
+    "question": "branches?",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence.",
+    "exists_in_source": true
+  },
+  {
+    "question": "courses?",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence.",
+    "exists_in_source": true
+  },
+  {
+    "question": "Computer engineering?",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence.",
+    "exists_in_source": true
+  },
+  {
+    "question": "list of courses",
+    "ground_truth": "ChatTech University offers programs in Information Technology, Computer Engineering, Mechanical Engineering, Civil Engineering, Chemical Engineering, and Artificial Intelligence.",
+    "exists_in_source": true
+  },
+  {
+    "question": "fees for first year",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees",
+    "exists_in_source": true
+  },
+  {
+    "question": "fees for Ac room for girls",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees",
+    "exists_in_source": true
+  },
+  {
+    "question": "tell me the fee",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees",
+    "exists_in_source": true
+  },
+  {
+    "question": "fees for Ac room for boys",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees",
+    "exists_in_source": true
+  },
+  {
+    "question": "fees",
+    "ground_truth": "For detailed fee structure, visit: https://chattechuniversity.edu/fees",
+    "exists_in_source": true
+  },
+  {
+    "question": "how to reach college",
+    "ground_truth": "ChatTech University is located at: 123 Innovation Drive, Future City, FC 56789. View map: https://maps.example.com/chattech",
+    "exists_in_source": true
+  },
+  {
+    "question": "how can I reach college",
+    "ground_truth": "ChatTech University is located at: 123 Innovation Drive, Future City, FC 56789. View map: https://maps.example.com/chattech",
+    "exists_in_source": true
+  },
+  {
+    "question": "where is college located",
+    "ground_truth": "ChatTech University is located at: 123 Innovation Drive, Future City, FC 56789. View map: https://maps.example.com/chattech",
+    "exists_in_source": true
+  },
+  {
+    "question": "what is the hostel fee",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel",
+    "exists_in_source": true
+  },
+  {
+    "question": "hostel facilities",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel",
+    "exists_in_source": true
+  },
+  {
+    "question": "hostel address",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel",
+    "exists_in_source": true
+  },
+  {
+    "question": "hostel facility",
+    "ground_truth": "ChatTech University provides on-campus hostel facilities. Details: https://chattechuniversity.edu/hostel",
+    "exists_in_source": true
+  },
+  {
+    "question": "events organised",
+    "ground_truth": "Check out our latest events here: https://chattechuniversity.edu/events",
+    "exists_in_source": true
+  },
+  {
+    "question": "Are there any event held at college",
+    "ground_truth": "Check out our latest events here: https://chattechuniversity.edu/events",
+    "exists_in_source": true
+  },
+  {
+    "question": "documents needed at the time of admission",
+    "ground_truth": "Required documents are listed here: https://chattechuniversity.edu/admissions/documents",
+    "exists_in_source": true
+  },
+  {
+    "question": "documents needed",
+    "ground_truth": "Required documents are listed here: https://chattechuniversity.edu/admissions/documents",
+    "exists_in_source": true
+  },
+  {
+    "question": "documents needed for admision",
+    "ground_truth": "Required documents are listed here: https://chattechuniversity.edu/admissions/documents",
+    "exists_in_source": true
+  },
+  {
+    "question": "floors in college",
+    "ground_truth": "The main engineering building at ChatTech University has 5 floors.",
+    "exists_in_source": true
+  },
+  {
+    "question": "Syllabus for IT",
+    "ground_truth": "View syllabus and timetable here: https://chattechuniversity.edu/academics/syllabus",
+    "exists_in_source": true
+  },
+  {
+    "question": "does the college have library facility",
+    "ground_truth": "Our central library is open from 8 AM to 8 PM. More info: https://chattechuniversity.edu/library",
+    "exists_in_source": true
+  },
+  {
+    "question": "how many libraries",
+    "ground_truth": "Our central library is open from 8 AM to 8 PM. More info: https://chattechuniversity.edu/library",
+    "exists_in_source": true
+  },
+  {
+    "question": "Library",
+    "ground_truth": "Our central library is open from 8 AM to 8 PM. More info: https://chattechuniversity.edu/library",
+    "exists_in_source": true
+  },
+  {
+    "question": "college infrastructure",
+    "ground_truth": "ChatTech University features modern labs, smart classrooms, high-speed Wi-Fi, and advanced research centers.",
+    "exists_in_source": true
+  },
+  {
+    "question": "canteen facilities",
+    "ground_truth": "Our campus canteen offers a wide range of hygienic and affordable meals.",
+    "exists_in_source": true
+  },
+  {
+    "question": "canteen",
+    "ground_truth": "Our campus canteen offers a wide range of hygienic and affordable meals.",
+    "exists_in_source": true
+  },
+  {
+    "question": "food in canteen",
+    "ground_truth": "Our menu includes sandwiches, pasta, rice meals, snacks, and beverages.",
+    "exists_in_source": true
+  },
+  {
+    "question": "companies visit",
+    "ground_truth": "Placement details are available at: https://chattechuniversity.edu/placements",
+    "exists_in_source": true
+  },
+  {
+    "question": "recruitment",
+    "ground_truth": "Placement details are available at: https://chattechuniversity.edu/placements",
+    "exists_in_source": true
+  },
+  {
+    "question": "it hod",
+    "ground_truth": "The Head of IT Department is Dr. Alan Turing, located in Tech Block A.",
+    "exists_in_source": true
+  },
+  {
+    "question": "Who is computer HOD",
+    "ground_truth": "The Head of Computer Engineering is Dr. Ada Lovelace, located in Tech Block B.",
+    "exists_in_source": true
+  },
+  {
+    "question": "whatv is the principal name",
+    "ground_truth": "The principal of ChatTech University is Dr. Isaac Newton.",
+    "exists_in_source": true
+  },
+  {
+    "question": "when is exam",
+    "ground_truth": "Academic calendar: https://chattechuniversity.edu/calendar",
+    "exists_in_source": true
+  },
+  {
+    "question": "When is semester exam",
+    "ground_truth": "Academic calendar: https://chattechuniversity.edu/calendar",
+    "exists_in_source": true
+  },
+  {
+    "question": "admission process",
+    "ground_truth": "Apply online here: https://chattechuniversity.edu/admissions",
+    "exists_in_source": true
+  },
+  {
+    "question": "scholarship ce",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships",
+    "exists_in_source": true
+  },
+  {
+    "question": "scholarship for computer engineering",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships",
+    "exists_in_source": true
+  },
+  {
+    "question": "mechanical scholarship",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships",
+    "exists_in_source": true
+  },
+  {
+    "question": "list of scholarship",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships",
+    "exists_in_source": true
+  },
+  {
+    "question": "chemical scholarship",
+    "ground_truth": "Scholarship details: https://chattechuniversity.edu/scholarships",
+    "exists_in_source": true
+  },
+  {
+    "question": "College facility",
+    "ground_truth": "Facilities include labs, auditorium, sports complex, library, and innovation hub.",
+    "exists_in_source": true
+  },
+  {
+    "question": "number of seats per branch",
+    "ground_truth": "Each major engineering branch accepts approximately 120 students annually.",
+    "exists_in_source": true
+  },
+  {
+    "question": "maximum number of seats",
+    "ground_truth": "Each major engineering branch accepts approximately 120 students annually.",
+    "exists_in_source": true
+  },
+  {
+    "question": "college dresscode",
+    "ground_truth": "Students are required to wear smart casuals with ID badges. Formal attire is required during presentations.",
+    "exists_in_source": true
+  },
+  {
+    "question": "what is the uniform",
+    "ground_truth": "Students are required to wear smart casuals with ID badges. Formal attire is required during presentations.",
+    "exists_in_source": true
+  },
+  {
+    "question": "committee",
+    "ground_truth": "For committee information, contact: +123-800-555",
+    "exists_in_source": true
+  },
+  {
+    "question": "Holiday in these year",
+    "ground_truth": "Academic calender is given to you by your class-soordinators after you join your respective classes",
+    "exists_in_source": true
+  },
+  {
+    "question": "holidays",
+    "ground_truth": "Academic calender is given to you by your class-soordinators after you join your respective classes",
+    "exists_in_source": true
+  },
+  {
+    "question": "please provide sports and games information",
+    "ground_truth": "Our university encourages all-round development of students and hence provides sports facilities in the campus. For more details visit https://chattechuniversity.edu/sports",
+    "exists_in_source": true
+  },
+  {
+    "question": "nice work",
+    "ground_truth": "I am glad I helped you",
+    "exists_in_source": true
+  },
+  {
+    "question": "k",
+    "ground_truth": "I am glad I helped you",
+    "exists_in_source": true
+  },
+  {
+    "question": "its ok",
+    "ground_truth": "I am glad I helped you",
+    "exists_in_source": true
+  },
+  {
+    "question": "things you can do",
+    "ground_truth": "I can answer to low-intermediate questions regarding college",
+    "exists_in_source": true
+  },
+  {
+    "question": "is ragging done here",
+    "ground_truth": "We are Proud to tell you that our college provides ragging free environment, and we have strict rules against ragging",
+    "exists_in_source": true
+  },
+  {
+    "question": "antiragging facility",
+    "ground_truth": "We are Proud to tell you that our college provides ragging free environment, and we have strict rules against ragging",
+    "exists_in_source": true
+  },
+  {
+    "question": "hod",
+    "ground_truth": "HODs differ for each branch, please be more specific like: (HOD it)",
+    "exists_in_source": true
+  },
+  {
+    "question": "what day is it today",
+    "ground_truth": "I do not have access to real-time date or time information.",
+    "exists_in_source": false
+  },
+  {
+    "question": "is the earth round or flat",
+    "ground_truth": "The Earth is round (spherical in shape).",
+    "exists_in_source": false
+  },
+  {
+    "question": "who is the president of the united states",
+    "ground_truth": "I do not have access to current political information.",
+    "exists_in_source": false
+  },
+  {
+    "question": "what is the weather like tomorrow",
+    "ground_truth": "I do not have access to real-time weather forecasts.",
+    "exists_in_source": false
+  },
+  {
+    "question": "how many planets are in the solar system",
+    "ground_truth": "There are 8 planets in our solar system.",
+    "exists_in_source": false
+  },
+  {
+    "question": "what is the capital of france",
+    "ground_truth": "The capital of France is Paris.",
+    "exists_in_source": false
+  },
+  {
+    "question": "who invented the telephone",
+    "ground_truth": "Alexander Graham Bell is credited with inventing the telephone.",
+    "exists_in_source": false
+  },
+  {
+    "question": "what is the speed of light",
+    "ground_truth": "The speed of light in a vacuum is approximately 299,792 kilometers per second.",
+    "exists_in_source": false
+  },
+  {
+    "question": "how tall is mount everest",
+    "ground_truth": "Mount Everest is approximately 8,849 meters (29,032 feet) tall.",
+    "exists_in_source": false
+  },
+  {
+    "question": "what is the largest ocean on earth",
+    "ground_truth": "The Pacific Ocean is the largest ocean on Earth.",
+    "exists_in_source": false
+  },
+  {
+    "question": "who wrote romeo and juliet",
+    "ground_truth": "Romeo and Juliet was written by William Shakespeare.",
+    "exists_in_source": false
+  },
+  {
+    "question": "what is the boiling point of water",
+    "ground_truth": "Water boils at 100 degrees Celsius (212 degrees Fahrenheit) at sea level.",
+    "exists_in_source": false
+  },
+  {
+    "question": "how many continents are there",
+    "ground_truth": "There are 7 continents on Earth.",
+    "exists_in_source": false
+  },
+  {
+    "question": "what is the currency of japan",
+    "ground_truth": "The currency of Japan is the Japanese Yen (JPY).",
+    "exists_in_source": false
+  },
+  {
+    "question": "who painted the mona lisa",
+    "ground_truth": "The Mona Lisa was painted by Leonardo da Vinci.",
+    "exists_in_source": false
+  }
+]
