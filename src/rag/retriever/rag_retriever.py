@@ -48,8 +48,31 @@ class RAGRetriever:
         self.chunks = []
         self.metadata = {}
         self.bm25_index = None
+        self.faiss_index_type = None
 
         self._load_vector_db()
+
+    def _configure_faiss_search_params(self):
+        """Configure search-time parameters based on FAISS index type."""
+        if self.index is None:
+            return
+
+        try:
+            import faiss
+        except ImportError:
+            return
+
+        if self.faiss_index_type == "ivf_flat":
+            # Set nprobe for IVF - controls number of clusters to visit
+            nprobe = self.metadata.get('faiss_ivf_nprobe', 10)
+            if isinstance(self.index, faiss.IndexIVFFlat):
+                self.index.nprobe = nprobe
+
+        elif self.faiss_index_type == "hnsw":
+            # Set efSearch for HNSW - controls query-time exploration
+            ef_search = self.metadata.get('faiss_hnsw_ef_search', 128)
+            if isinstance(self.index, faiss.IndexHNSWFlat):
+                self.index.hnsw.efSearch = ef_search
 
     def _load_vector_db(self):
         db_file = self.vector_db_path / 'vector_db.pkl'
@@ -63,6 +86,10 @@ class RAGRetriever:
         self.chunks = db_data['chunks']
         self.metadata = db_data.get('metadata', {})
         self.bm25_index = db_data.get('bm25_index')
+        self.faiss_index_type = self.metadata.get('faiss_index_type', 'flat_ip')
+
+        # Configure search-time parameters for the loaded index
+        self._configure_faiss_search_params()
 
     def _retrieve_vector(self, query_embedding: List[float]) -> List[Dict[str, Any]]:
         query_array = np.array([query_embedding], dtype=np.float32)
@@ -189,6 +216,7 @@ class RAGRetriever:
             'retriever_type': self.retriever_type,
             'num_chunks_to_retrieve': self.num_chunks,
             'vdb_metadata': self.metadata,
+            'faiss_index_type': self.faiss_index_type,
             'self_eval_enabled': self.enable_self_eval,
             'query_fusion_enabled': self.enable_query_fusion,
             'fusion_num_variants': self.fusion_num_variants,

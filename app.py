@@ -22,6 +22,7 @@ warnings.filterwarnings("ignore", message=".*__path__.*", category=UserWarning)
 
 import numpy as np
 import streamlit as st
+import plotly.graph_objects as go
 from dotenv import load_dotenv
 
 from src.data_utils.data_loader import DataLoader
@@ -32,12 +33,12 @@ from src.rag.vector_db.vector_db_builder import VectorDBBuilder
 from src.rag.retriever.rag_retriever import RAGRetriever
 from src.rag.pipeline import RAGPipeline
 from src.rag.evaluation.rag_evaluator import RAGEvaluator
+from src.dashboard import FAISSDashboard
 
 
 load_dotenv()
 
 
-@st.cache_resource
 def build_vector_db():
     # Resolve paths relative to script location, not working directory
     base_dir = Path(__file__).parent
@@ -73,7 +74,6 @@ def load_pipeline():
     return RAGPipeline()
 
 
-@st.cache_resource
 def load_vector_db():
     vector_db_path = Path(os.getenv("VDB_SAVE_PATH", "data/vector_db")) / "vector_db.pkl"
     if not vector_db_path.exists():
@@ -172,7 +172,19 @@ def chat_page():
                         # Use centralized RAG pipeline
                         pipeline = load_pipeline()
                         result = pipeline.run(query)
-                        
+
+                        # Generate query embedding for dashboard visualization
+                        embedding_api = EmbeddingAPI()
+                        query_embedding = embedding_api.generate_embedding(query)
+
+                        # Store query data in session state for dashboard
+                        st.session_state.last_query_result = {
+                            "query": query,
+                            "query_embedding": query_embedding,
+                            "retrieved_chunks": result['retrieved_chunks'],
+                            "response": result['response']
+                        }
+
                         response = result['response']
                         self_eval = result['self_eval']
                         fusion = result.get('fusion', {})
@@ -246,104 +258,149 @@ def dashboard_page():
     st.title("📊 Dashboard")
     st.caption("Vector DB visualization and analytics")
 
-    db_data = load_vector_db()
-
-    if db_data is None:
+    # Check if vector DB exists
+    vdb_path = os.getenv("VDB_SAVE_PATH", "data/vector_db")
+    vdb_full_path = Path(vdb_path) / "vector_db.pkl"
+    if not vdb_full_path.exists():
         st.error("Vector database not found. Please build it first from the Chat page.")
         return
 
-    chunks = db_data.get("chunks", [])
-    embeddings = np.array(db_data.get("embeddings", []), dtype=np.float32)
-    metadata = db_data.get("metadata", {})
+    # Get query data from session state if available
+    query_data = st.session_state.get("last_query_result", None)
 
-    if not chunks or embeddings.size == 0:
-        st.error("No chunks or embeddings found in the vector database.")
-        return
+    if query_data:
+        st.info(f"ℹ️ Showing visualizations for last query: \"{query_data.get('query', 'Unknown')[:50]}...\"")
 
-    if len(chunks) != embeddings.shape[0]:
-        st.error(f"Chunk count ({len(chunks)}) does not match embedding count ({embeddings.shape[0]}).")
-        return
+    # Initialize and render FAISS dashboard
+    dashboard = FAISSDashboard(vdb_path)
+    dashboard.render(query_data=query_data)
 
-    points = reduce_embeddings_pca(embeddings)
+    # Additional: Show chunk explorer at the bottom
+    with st.expander("🔍 Chunk Explorer", expanded=False):
+        # Load data for chunk explorer
+        db_data = load_vector_db()
+        if db_data:
+            chunks = db_data.get("chunks", [])
+            embeddings = np.array(db_data.get("embeddings", []), dtype=np.float32)
 
-    rows = []
-    for index, chunk in enumerate(chunks):
-        content = chunk.get("content", "")
-        rows.append({
-            "x": float(points[index, 0]),
-            "y": float(points[index, 1]),
-            "chunk_id": chunk.get("chunk_id"),
-            "doc_id": chunk.get("doc_id"),
-            "tag": chunk.get("tag") or "unknown",
-            "source": chunk.get("source") or "unknown",
-            "preview": content[:250],
-            "content": content,
-        })
+            if len(chunks) > 0 and embeddings.size > 0:
+                # Reduce to 2D for display
+                from src.dashboard.utils import reduce_embeddings_pca
+                points_2d = reduce_embeddings_pca(embeddings)
 
-    tags = sorted({row["tag"] for row in rows})
+                # Get query embedding if available for projection
+                query_point_2d = None
+                if query_data and query_data.get("query_embedding") is not None:
+                    query_emb = np.array(query_data["query_embedding"], dtype=np.float32)
+                    combined = np.vstack([embeddings, query_emb.reshape(1, -1)])
+                    combined_2d = reduce_embeddings_pca(combined, n_components=2)
+                    query_point_2d = combined_2d[-1]  # Last row is query
 
-    with st.sidebar:
-        st.header("Vector DB Info")
-        st.write(f"Chunks: `{len(chunks)}`")
-        st.write(f"Embedding shape: `{embeddings.shape}`")
-        st.write(f"Document structure mode: `{metadata.get('document_structure_mode', 'unknown')}`")
+                # Create rows for filtering
+                rows = []
+                for i, chunk in enumerate(chunks):
+                    content = chunk.get("content", "")
+                    rows.append({
+                        "x": float(points_2d[i, 0]),
+                        "y": float(points_2d[i, 1]),
+                        "chunk_id": chunk.get("chunk_id", i),
+                        "doc_id": chunk.get("doc_id", "unknown"),
+                        "tag": chunk.get("tag") or "unknown",
+                        "source": chunk.get("source") or "unknown",
+                        "preview": content[:100] + "..." if len(content) > 100 else content,
+                        "content": content,
+                    })
 
-        if metadata:
-            st.subheader("Metadata")
-            st.json(metadata)
+                # Filter controls
+                col1, col2 = st.columns(2)
+                with col1:
+                    search_text = st.text_input("Search chunks", key="chunk_search")
+                with col2:
+                    tags = sorted({row["tag"] for row in rows})
+                    selected_tags = st.multiselect("Filter by tag", tags, key="chunk_tags")
 
-        st.subheader("Filters")
-        search_text = st.text_input("Search chunks")
-        selected_tags = st.multiselect("Filter by tag", tags)
+                # Apply filters
+                filtered_rows = rows
+                if selected_tags:
+                    filtered_rows = [row for row in filtered_rows if row["tag"] in selected_tags]
 
-    filtered_rows = rows
-    if selected_tags:
-        filtered_rows = [row for row in filtered_rows if row["tag"] in selected_tags]
+                if search_text.strip():
+                    query = search_text.casefold().strip()
+                    filtered_rows = [
+                        row for row in filtered_rows
+                        if query in str(row["content"]).casefold()
+                        or query in str(row["tag"]).casefold()
+                        or query in str(row["doc_id"]).casefold()
+                        or query in str(row["chunk_id"]).casefold()
+                    ]
 
-    if search_text.strip():
-        query = search_text.casefold().strip()
-        filtered_rows = [
-            row for row in filtered_rows
-            if query in str(row["content"]).casefold()
-            or query in str(row["tag"]).casefold()
-            or query in str(row["doc_id"]).casefold()
-            or query in str(row["chunk_id"]).casefold()
-        ]
+                # Show 2D map with Plotly for consistency
+                st.write(f"Showing `{len(filtered_rows)}` of `{len(rows)}` chunks:")
+                if filtered_rows:
+                    # Build Plotly figure
+                    fig = go.Figure()
 
-    st.subheader("2D PCA Map")
-    st.write(f"Showing `{len(filtered_rows)}` of `{len(rows)}` chunks.")
+                    # Get unique tags
+                    unique_tags = sorted({row["tag"] for row in filtered_rows})
 
-    if filtered_rows:
-        chart_rows = [
-            {
-                "x": row["x"],
-                "y": row["y"],
-                "tag": row["tag"],
-                "chunk_id": row["chunk_id"],
-            }
-            for row in filtered_rows
-        ]
-        st.scatter_chart(chart_rows, x="x", y="y", color="tag", size=80)
-    else:
-        st.warning("No chunks match the selected filters.")
+                    # Add trace for each tag
+                    for tag in unique_tags:
+                        tag_rows = [row for row in filtered_rows if row["tag"] == tag]
+                        fig.add_trace(go.Scatter(
+                            x=[row["x"] for row in tag_rows],
+                            y=[row["y"] for row in tag_rows],
+                            mode='markers',
+                            name=tag,
+                            marker=dict(size=8, opacity=0.7),
+                            hovertemplate=f'{tag}<br>chunk_id: %{{text}}<br>x: %{{x:.2f}}<br>y: %{{y:.2f}}<extra></extra>',
+                            text=[row["chunk_id"] for row in tag_rows]
+                        ))
 
-    st.subheader("Chunks")
-    st.dataframe(
-        filtered_rows,
-        use_container_width=True,
-        column_order=["chunk_id", "doc_id", "tag", "source", "preview", "x", "y"],
-        hide_index=True,
-    )
+                    # Add query point if available (green star, matching user's style)
+                    if query_point_2d is not None:
+                        fig.add_trace(go.Scatter(
+                            x=[query_point_2d[0]],
+                            y=[query_point_2d[1]],
+                            mode='markers',
+                            name='QUERY',
+                            marker=dict(
+                                symbol='star',
+                                size=10,
+                                color='green',
+                                line=dict(width=2, color='darkgreen')
+                            ),
+                            hovertemplate='QUERY<br>x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>'
+                        ))
 
-    st.subheader("Inspect a Chunk")
-    if filtered_rows:
-        selected_chunk_id = st.selectbox(
-            "Choose chunk_id",
-            [row["chunk_id"] for row in filtered_rows],
-        )
-        selected = next(row for row in filtered_rows if row["chunk_id"] == selected_chunk_id)
-        st.json({key: selected[key] for key in ["chunk_id", "doc_id", "tag", "source", "x", "y"]})
-        st.text_area("Content", selected["content"], height=250)
+                    fig.update_layout(
+                        title='Chunk Locations by Tag' + (' with Query' if query_point_2d is not None else ''),
+                        xaxis_title='PCA Component 1',
+                        yaxis_title='PCA Component 2',
+                        hovermode='closest',
+                        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                # Show data table
+                st.dataframe(
+                    filtered_rows,
+                    use_container_width=True,
+                    column_order=["chunk_id", "doc_id", "tag", "source", "preview", "x", "y"],
+                    hide_index=True,
+                )
+
+                # Chunk inspector
+                st.subheader("Inspect a Chunk")
+                if filtered_rows:
+                    selected_chunk_id = st.selectbox(
+                        "Choose chunk_id",
+                        [row["chunk_id"] for row in filtered_rows],
+                        key="inspect_chunk"
+                    )
+                    selected = next(row for row in filtered_rows if row["chunk_id"] == selected_chunk_id)
+                    st.json({key: selected[key] for key in ["chunk_id", "doc_id", "tag", "source", "x", "y"]})
+                    st.text_area("Content", selected["content"], height=250)
 
 
 def evaluation_page():
@@ -650,6 +707,111 @@ def settings_page():
                 help="Overlap between chunks"
             )
     
+    # FAISS Index Settings (only applies to vector/hybrid retrieval)
+    with st.expander("🗂️  FAISS Index Settings", expanded=True):
+        faiss_index_type = st.selectbox(
+            "FAISS_INDEX_TYPE",
+            options=["flat_ip", "ivf_flat", "hnsw", "pq"],
+            index=["flat_ip", "ivf_flat", "hnsw", "pq"].index(
+                current_env.get("FAISS_INDEX_TYPE", os.getenv("FAISS_INDEX_TYPE", "flat_ip"))
+            ),
+            help="FAISS index type (only used when RETRIEVAL_TYPE=vector or hybrid). Requires rebuild to change."
+        )
+
+        # Show description of selected index type
+        index_descriptions = {
+            "flat_ip": "Exact search, 100% accuracy. Best for small datasets (<10K chunks).",
+            "ivf_flat": "Clustering-based, ~95% accuracy. Faster for medium datasets (10K-1M).",
+            "hnsw": "Graph-based, ~98% accuracy. Fastest general purpose option.",
+            "pq": "Product quantization, ~90% accuracy. Memory-efficient for large datasets (>1M)."
+        }
+        st.caption(f"**{faiss_index_type.upper()}**: {index_descriptions.get(faiss_index_type, '')}")
+
+        # IVF parameters
+        if faiss_index_type == "ivf_flat":
+            col1, col2 = st.columns(2)
+            with col1:
+                faiss_ivf_nlist = st.number_input(
+                    "FAISS_IVF_NLIST",
+                    min_value=1,
+                    max_value=10000,
+                    value=int(current_env.get("FAISS_IVF_NLIST", os.getenv("FAISS_IVF_NLIST", "100"))),
+                    step=10,
+                    help="Number of clusters (lower=faster, higher=more accurate)"
+                )
+            with col2:
+                faiss_ivf_nprobe = st.number_input(
+                    "FAISS_IVF_NPROBE",
+                    min_value=1,
+                    max_value=1000,
+                    value=int(current_env.get("FAISS_IVF_NPROBE", os.getenv("FAISS_IVF_NPROBE", "10"))),
+                    step=1,
+                    help="Clusters to search at query time (higher=more accurate, slower)"
+                )
+        else:
+            faiss_ivf_nlist = int(current_env.get("FAISS_IVF_NLIST", os.getenv("FAISS_IVF_NLIST", "100")))
+            faiss_ivf_nprobe = int(current_env.get("FAISS_IVF_NPROBE", os.getenv("FAISS_IVF_NPROBE", "10")))
+
+        # HNSW parameters
+        if faiss_index_type == "hnsw":
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                faiss_hnsw_m = st.number_input(
+                    "FAISS_HNSW_M",
+                    min_value=4,
+                    max_value=64,
+                    value=int(current_env.get("FAISS_HNSW_M", os.getenv("FAISS_HNSW_M", "16"))),
+                    step=2,
+                    help="Connections per node (higher=more accurate, more memory)"
+                )
+            with col2:
+                faiss_hnsw_ef_construction = st.number_input(
+                    "FAISS_HNSW_EF_CONSTRUCTION",
+                    min_value=10,
+                    max_value=1000,
+                    value=int(current_env.get("FAISS_HNSW_EF_CONSTRUCTION", os.getenv("FAISS_HNSW_EF_CONSTRUCTION", "200"))),
+                    step=10,
+                    help="Build-time search depth (higher=better index, slower build)"
+                )
+            with col3:
+                faiss_hnsw_ef_search = st.number_input(
+                    "FAISS_HNSW_EF_SEARCH",
+                    min_value=10,
+                    max_value=1000,
+                    value=int(current_env.get("FAISS_HNSW_EF_SEARCH", os.getenv("FAISS_HNSW_EF_SEARCH", "128"))),
+                    step=10,
+                    help="Query-time search depth (higher=more accurate, slower)"
+                )
+        else:
+            faiss_hnsw_m = int(current_env.get("FAISS_HNSW_M", os.getenv("FAISS_HNSW_M", "16")))
+            faiss_hnsw_ef_construction = int(current_env.get("FAISS_HNSW_EF_CONSTRUCTION", os.getenv("FAISS_HNSW_EF_CONSTRUCTION", "200")))
+            faiss_hnsw_ef_search = int(current_env.get("FAISS_HNSW_EF_SEARCH", os.getenv("FAISS_HNSW_EF_SEARCH", "128")))
+
+        # PQ parameters
+        if faiss_index_type == "pq":
+            col1, col2 = st.columns(2)
+            with col1:
+                faiss_pq_m = st.number_input(
+                    "FAISS_PQ_M",
+                    min_value=1,
+                    max_value=64,
+                    value=int(current_env.get("FAISS_PQ_M", os.getenv("FAISS_PQ_M", "8"))),
+                    step=1,
+                    help="Subquantizers (embedding dim must be divisible by this)"
+                )
+            with col2:
+                faiss_pq_nbits = st.selectbox(
+                    "FAISS_PQ_NBITS",
+                    options=[8, 16],
+                    index=[8, 16].index(int(current_env.get("FAISS_PQ_NBITS", os.getenv("FAISS_PQ_NBITS", "8")))),
+                    help="Bits per code (higher=more accurate, more memory)"
+                )
+        else:
+            faiss_pq_m = int(current_env.get("FAISS_PQ_M", os.getenv("FAISS_PQ_M", "8")))
+            faiss_pq_nbits = int(current_env.get("FAISS_PQ_NBITS", os.getenv("FAISS_PQ_NBITS", "8")))
+
+        st.info("⚠️ Changing FAISS index type requires rebuilding the vector database.")
+
     # Self-Evaluation Settings
     with st.expander("🧠 Self-Evaluation (Self-RAG)", expanded=True):
         enable_self_eval = st.checkbox(
@@ -761,6 +923,15 @@ def settings_page():
                 "FUSION_K": str(fusion_k),
                 "FUSION_TOP_K": str(fusion_top_k),
                 "RAG_EXPERIMENTS_DIR": results_dir,
+                # FAISS index settings
+                "FAISS_INDEX_TYPE": faiss_index_type,
+                "FAISS_IVF_NLIST": str(faiss_ivf_nlist),
+                "FAISS_IVF_NPROBE": str(faiss_ivf_nprobe),
+                "FAISS_HNSW_M": str(faiss_hnsw_m),
+                "FAISS_HNSW_EF_CONSTRUCTION": str(faiss_hnsw_ef_construction),
+                "FAISS_HNSW_EF_SEARCH": str(faiss_hnsw_ef_search),
+                "FAISS_PQ_M": str(faiss_pq_m),
+                "FAISS_PQ_NBITS": str(faiss_pq_nbits),
             }
             
             # Read existing file and update in-place
@@ -820,7 +991,16 @@ def settings_page():
             os.environ["FUSION_K"] = str(fusion_k)
             os.environ["FUSION_TOP_K"] = str(fusion_top_k)
             os.environ["RAG_EXPERIMENTS_DIR"] = results_dir
-            
+            # FAISS index settings
+            os.environ["FAISS_INDEX_TYPE"] = faiss_index_type
+            os.environ["FAISS_IVF_NLIST"] = str(faiss_ivf_nlist)
+            os.environ["FAISS_IVF_NPROBE"] = str(faiss_ivf_nprobe)
+            os.environ["FAISS_HNSW_M"] = str(faiss_hnsw_m)
+            os.environ["FAISS_HNSW_EF_CONSTRUCTION"] = str(faiss_hnsw_ef_construction)
+            os.environ["FAISS_HNSW_EF_SEARCH"] = str(faiss_hnsw_ef_search)
+            os.environ["FAISS_PQ_M"] = str(faiss_pq_m)
+            os.environ["FAISS_PQ_NBITS"] = str(faiss_pq_nbits)
+
             st.success("✅ Settings saved to .env and applied!")
             st.info("🔄 Refresh the page to ensure all components pick up the new settings.")
             
