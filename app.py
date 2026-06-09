@@ -39,21 +39,26 @@ load_dotenv()
 
 @st.cache_resource
 def build_vector_db():
+    # Resolve paths relative to script location, not working directory
+    base_dir = Path(__file__).parent
+    data_path = base_dir / os.getenv("DATA_SOURCE_PATH", "data/intents-v2.json")
+    vdb_path = base_dir / os.getenv("VDB_SAVE_PATH", "data/vector_db")
+    
     data_loader = DataLoader()
     embedding_api = EmbeddingAPI()
 
     builder = VectorDBBuilder(
         data_loader=data_loader,
         embedding_api=embedding_api,
-        vdb_save_path=os.getenv("VDB_SAVE_PATH", "data/vector_db"),
+        vdb_save_path=str(vdb_path),
     )
 
     result = builder.build_vector_db()
     return result
 
 
-@st.cache_resource
 def load_retriever():
+    """Load retriever (not cached to pick up settings changes)."""
     llm_api = LLMAPI()
     retriever = RAGRetriever(
         vector_db_path=os.getenv("VDB_SAVE_PATH", "data/vector_db"),
@@ -63,9 +68,8 @@ def load_retriever():
     return retriever
 
 
-@st.cache_resource
 def load_pipeline():
-    """Load the centralized RAG pipeline."""
+    """Load the centralized RAG pipeline (not cached to pick up settings changes)."""
     return RAGPipeline()
 
 
@@ -537,6 +541,7 @@ def settings_page():
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
                     key, value = line.split('=', 1)
+                    value = value.strip().strip('"\'')  # Strip whitespace and quotes
                     current_env[key] = value
     
     # API Keys Section
@@ -734,33 +739,65 @@ def settings_page():
     
     if st.button("💾 Save Settings to .env", type="primary", use_container_width=True):
         try:
-            # Build new .env content
-            env_lines = [
-                f"GROQ_API_KEY={groq_key}",
-                f"HUGGINGFACE_API_KEY={hf_key}",
-                f"DATA_SOURCE_PATH={data_source}",
-                f"VDB_SAVE_PATH={vdb_path}",
-                f"LLM_MODEL={llm_model}",
-                f"EMBEDDING_MODEL={embedding_model}",
-                f"RAG_TEST_DATA_PATH={test_data}",
-                f"CHUNK_SIZE={chunk_size}",
-                f"CHUNK_OVERLAP={chunk_overlap}",
-                f"BM25_WEIGHT={bm25_weight}",
-                f"DOCUMENT_STRUCTURE_MODE={doc_mode}",
-                f"RETRIEVAL_TYPE={retrieval_type}",
-                f"ENABLE_SELF_EVAL={str(enable_self_eval).lower()}",
-                f"RELEVANCE_THRESHOLD={relevance_threshold}",
-                f"CONFIDENCE_THRESHOLD={confidence_threshold}",
-                f"ENABLE_QUERY_FUSION={str(enable_query_fusion).lower()}",
-                f"FUSION_NUM_VARIANTS={fusion_num_variants}",
-                f"FUSION_K={fusion_k}",
-                f"FUSION_TOP_K={fusion_top_k}",
-                f"RAG_EXPERIMENTS_DIR={results_dir}",
-            ]
+            # Map of keys to new values
+            new_values = {
+                "GROQ_API_KEY": groq_key,
+                "HUGGINGFACE_API_KEY": hf_key,
+                "DATA_SOURCE_PATH": data_source,
+                "VDB_SAVE_PATH": vdb_path,
+                "LLM_MODEL": llm_model,
+                "EMBEDDING_MODEL": embedding_model,
+                "RAG_TEST_DATA_PATH": test_data,
+                "CHUNK_SIZE": str(chunk_size),
+                "CHUNK_OVERLAP": str(chunk_overlap),
+                "BM25_WEIGHT": str(bm25_weight),
+                "DOCUMENT_STRUCTURE_MODE": doc_mode,
+                "RETRIEVAL_TYPE": retrieval_type,
+                "ENABLE_SELF_EVAL": str(enable_self_eval).lower(),
+                "RELEVANCE_THRESHOLD": str(relevance_threshold),
+                "CONFIDENCE_THRESHOLD": str(confidence_threshold),
+                "ENABLE_QUERY_FUSION": str(enable_query_fusion).lower(),
+                "FUSION_NUM_VARIANTS": str(fusion_num_variants),
+                "FUSION_K": str(fusion_k),
+                "FUSION_TOP_K": str(fusion_top_k),
+                "RAG_EXPERIMENTS_DIR": results_dir,
+            }
             
-            # Write to .env file
-            with open(env_path, 'w') as f:
-                f.write('\n'.join(env_lines) + '\n')
+            # Read existing file and update in-place
+            if env_path.exists():
+                with open(env_path, 'r') as f:
+                    lines = f.readlines()
+                
+                updated_keys = set()
+                for i, line in enumerate(lines):
+                    stripped = line.strip()
+                    # Skip comments and empty lines
+                    if not stripped or stripped.startswith('#'):
+                        continue
+                    # Check if this is a KEY=VALUE line we need to update
+                    if '=' in stripped:
+                        key = stripped.split('=', 1)[0]
+                        if key in new_values:
+                            # Preserve indentation, replace value
+                            prefix = line[:line.index(key)]
+                            lines[i] = f"{prefix}{key}={new_values[key]}\n"
+                            updated_keys.add(key)
+                
+                # Add any new keys that weren't in the file
+                new_keys = set(new_values.keys()) - updated_keys
+                if new_keys:
+                    lines.append("\n# Added by Settings page\n")
+                    for key in sorted(new_keys):
+                        lines.append(f"{key}={new_values[key]}\n")
+                
+                # Write back preserving structure
+                with open(env_path, 'w') as f:
+                    f.writelines(lines)
+            else:
+                # Create new .env file if it doesn't exist
+                with open(env_path, 'w') as f:
+                    for key, value in new_values.items():
+                        f.write(f"{key}={value}\n")
             
             # Update current environment
             os.environ["GROQ_API_KEY"] = groq_key
