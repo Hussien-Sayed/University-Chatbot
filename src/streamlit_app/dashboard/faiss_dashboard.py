@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .utils import reduce_embeddings_pca
 from .visualizations.ivf_viz import IVFVisualizer
+from .visualizations.hnsw_viz import HNSWVisualizer
 
 
 class FAISSDashboard:
@@ -189,18 +190,16 @@ class FAISSDashboard:
             visualizer.render_static()
 
     def _render_hnsw(self, query_data: Optional[Dict[str, Any]]):
-        """Render HNSW-specific visualizations (placeholder for Phase 2)."""
-        st.subheader("🕸️ HNSW Graph Structure")
-        st.info("HNSW visualizations coming in Phase 2")
+        """Render HNSW-specific visualizations."""
+        visualizer = HNSWVisualizer(self.index, self.embeddings, self.chunks, self.metadata)
 
-        # Basic info for now
-        m = self.metadata.get('faiss_hnsw_m', 16)
-        ef_search = self.metadata.get('faiss_hnsw_ef_search', 128)
-
-        st.write(f"**Graph parameters:**")
-        st.write(f"- Connections per node (M): `{m}`")
-        st.write(f"- Query search depth (efSearch): `{ef_search}`")
-        st.write(f"- Total nodes: `{len(self.chunks)}`")
+        if query_data:
+            query_embedding = query_data.get('query_embedding')
+            retrieved_chunks = query_data.get('retrieved_chunks', [])
+            if query_embedding is not None:
+                visualizer.render_with_query(query_embedding, retrieved_chunks)
+        else:
+            visualizer.render_static()
 
     def _render_pq(self, query_data: Optional[Dict[str, Any]]):
         """Render PQ-specific visualizations (placeholder for Phase 3)."""
