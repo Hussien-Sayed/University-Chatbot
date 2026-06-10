@@ -399,3 +399,59 @@ def get_pq_codebook(index) -> Optional[np.ndarray]:
     except Exception as e:
         print(f"Error extracting PQ codebook: {e}")
         return None
+
+
+def _get_pq_index(index) -> Optional[Any]:
+    """Get underlying PQ index, handling wrapped indices.
+
+    Args:
+        index: FAISS index (possibly wrapped in IndexIDMap)
+
+    Returns:
+        Unwrapped IndexPQ or IndexIVFPQ, or None if not found
+    """
+    try:
+        import faiss
+
+        # Direct match
+        if isinstance(index, (faiss.IndexPQ, faiss.IndexIVFPQ)):
+            return index
+
+        # Handle IndexIDMap2 wrapping
+        if hasattr(index, 'index') and isinstance(index.index, (faiss.IndexPQ, faiss.IndexIVFPQ)):
+            return index.index
+
+        return None
+    except Exception:
+        return None
+
+
+def get_pq_reconstructed_vectors(index, embeddings: np.ndarray) -> Optional[np.ndarray]:
+    """Reconstruct vectors from PQ codes.
+
+    Args:
+        index: FAISS IndexPQ or IndexIVFPQ (possibly wrapped)
+        embeddings: Original embeddings array (n_vectors, dim)
+
+    Returns:
+        Reconstructed vectors array same shape as embeddings, or None if error
+    """
+    try:
+        import faiss
+
+        # Get underlying PQ index (handle wrapped indices)
+        pq_index = _get_pq_index(index)
+        if pq_index is None:
+            print("Index is not a PQ type (may be flat or different type)")
+            return None
+
+        # Compute PQ codes for the embeddings
+        codes = pq_index.pq.compute_codes(embeddings)
+
+        # Decode codes back to vectors
+        reconstructed = pq_index.pq.decode(codes)
+
+        return reconstructed
+    except Exception as e:
+        print(f"Error reconstructing PQ vectors: {e}")
+        return None

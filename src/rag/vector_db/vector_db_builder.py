@@ -148,13 +148,23 @@ class VectorDBBuilder:
                     if dimension % m == 0:
                         self.faiss_pq_m = m
                         break
+
+            # Adjust nlist for small datasets (need at least 2 points per cluster for training)
+            nlist = min(self.faiss_ivf_nlist, max(1, num_vectors // 2))
+
             quantizer = faiss.IndexFlatIP(dimension)
-            self.index = faiss.IndexIVFPQ(quantizer, dimension, self.faiss_ivf_nlist, self.faiss_pq_m, self.faiss_pq_nbits)
-            # PQ requires training
-            if num_vectors >= self.faiss_ivf_nlist:
+            self.index = faiss.IndexIVFPQ(quantizer, dimension, nlist, self.faiss_pq_m, self.faiss_pq_nbits)
+
+            # PQ requires training - need enough vectors for meaningful clustering
+            # Also check if we have enough for PQ codebook training (2^nbits centroids per subspace)
+            pq_centroids = 2 ** self.faiss_pq_nbits
+            min_training_for_pq = max(nlist, pq_centroids)
+
+            if num_vectors >= min_training_for_pq:
                 self.index.train(embeddings_normalized)
             else:
                 # Fall back to flat if not enough vectors
+                print(f"Warning: Only {num_vectors} vectors but need at least {min_training_for_pq} for PQ training (nlist={nlist}, pq_centroids={pq_centroids}). Falling back to flat index.")
                 self.index = faiss.IndexFlatIP(dimension)
             self.index.add(embeddings_normalized)
 

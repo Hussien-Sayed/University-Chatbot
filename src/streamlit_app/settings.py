@@ -234,13 +234,13 @@ def settings_page():
             with col2:
                 faiss_pq_nbits = st.selectbox(
                     "FAISS_PQ_NBITS",
-                    options=[8, 16],
-                    index=[8, 16].index(int(current_env.get("FAISS_PQ_NBITS", os.getenv("FAISS_PQ_NBITS", "8")))),
-                    help="Bits per code (higher=more accurate, more memory)"
+                    options=[4, 8, 16],
+                    index=[4, 8, 16].index(int(current_env.get("FAISS_PQ_NBITS", os.getenv("FAISS_PQ_NBITS", "8")))),
+                    help="Bits per code (higher=more accurate, more memory). Use 4 for small datasets (<100 chunks)."
                 )
         else:
             faiss_pq_m = int(current_env.get("FAISS_PQ_M", os.getenv("FAISS_PQ_M", "8")))
-            faiss_pq_nbits = int(current_env.get("FAISS_PQ_NBITS", os.getenv("FAISS_PQ_NBITS", "8")))
+            faiss_pq_nbits = int(current_env.get("FAISS_PQ_NBITS", os.getenv("FAISS_PQ_NBITS", "4")))
 
         st.info("⚠️ Changing FAISS index type requires rebuilding the vector database.")
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from .utils import reduce_embeddings_pca
 from .visualizations.ivf_viz import IVFVisualizer
 from .visualizations.hnsw_viz import HNSWVisualizer
+from .visualizations.pq_viz import PQVisualizer
 
 
 class FAISSDashboard:
@@ -202,16 +203,14 @@ class FAISSDashboard:
             visualizer.render_static()
 
     def _render_pq(self, query_data: Optional[Dict[str, Any]]):
-        """Render PQ-specific visualizations (placeholder for Phase 3)."""
-        st.subheader("🗜️ Product Quantization Structure")
-        st.info("PQ visualizations coming in Phase 3")
+        """Render PQ-specific visualizations showing compression effect."""
+        visualizer = PQVisualizer(self.index, self.embeddings, self.chunks, self.metadata)
 
-        # Basic info for now
-        m = self.metadata.get('faiss_pq_m', 8)
-        nbits = self.metadata.get('faiss_pq_nbits', 8)
-
-        st.write(f"**Quantization parameters:**")
-        st.write(f"- Subquantizers (M): `{m}`")
-        st.write(f"- Bits per code: `{nbits}`")
-        st.write(f"- Centroids per subspace: `{2**nbits:,}`")
+        if query_data:
+            query_embedding = query_data.get('query_embedding')
+            retrieved_chunks = query_data.get('retrieved_chunks', [])
+            if query_embedding is not None:
+                visualizer.render_with_query(query_embedding, retrieved_chunks)
+        else:
+            visualizer.render_static()
 
