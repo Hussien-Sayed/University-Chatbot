@@ -23,12 +23,12 @@ class RAGRetriever:
         self,
         vector_db_path: str,
         llm_api: LLMAPI,
-        num_chunks: int = 3,
+        num_chunks: Optional[int] = None,
         retriever_type: Optional[str] = None
     ):
         self.vector_db_path = Path(vector_db_path)
         self.llm_api = llm_api
-        self.num_chunks = num_chunks
+        self.num_chunks = num_chunks if num_chunks is not None else int(os.getenv("NUM_CHUNKS", "3"))
         self.retriever_type = retriever_type or os.getenv("RETRIEVAL_TYPE", "vector")
         self.bm25_weight = float(os.getenv("BM25_WEIGHT", "0.5"))
 
@@ -70,7 +70,11 @@ class RAGRetriever:
 
         elif self.faiss_index_type == "hnsw":
             # Set efSearch for HNSW - controls query-time exploration
-            ef_search = self.metadata.get('faiss_hnsw_ef_search', 128)
+            # Priority: env var > metadata > default (128)
+            # Must be >= num_chunks for good recall
+            ef_search_default = int(os.getenv("FAISS_HNSW_EF_SEARCH", "128"))
+            ef_search = self.metadata.get('faiss_hnsw_ef_search', ef_search_default)
+            ef_search = max(ef_search, self.num_chunks)  # Ensure >= num_chunks for recall
             if isinstance(self.index, faiss.IndexHNSWFlat):
                 self.index.hnsw.efSearch = ef_search
 

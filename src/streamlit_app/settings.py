@@ -130,6 +130,15 @@ def settings_page():
                 help="Overlap between chunks"
             )
 
+            num_chunks = st.number_input(
+                "NUM_CHUNKS",
+                min_value=1,
+                max_value=20,
+                value=int(current_env.get("NUM_CHUNKS", os.getenv("NUM_CHUNKS", "3"))),
+                step=1,
+                help="Number of chunks to retrieve per query"
+            )
+
     # FAISS Index Settings (only applies to vector/hybrid retrieval)
     with st.expander("🗂️  FAISS Index Settings", expanded=True):
         faiss_index_type = st.selectbox(
@@ -333,6 +342,7 @@ def settings_page():
                 "RAG_TEST_DATA_PATH": test_data,
                 "CHUNK_SIZE": str(chunk_size),
                 "CHUNK_OVERLAP": str(chunk_overlap),
+                "NUM_CHUNKS": str(num_chunks),
                 "BM25_WEIGHT": str(bm25_weight),
                 "DOCUMENT_STRUCTURE_MODE": doc_mode,
                 "RETRIEVAL_TYPE": retrieval_type,
@@ -401,6 +411,7 @@ def settings_page():
             os.environ["RAG_TEST_DATA_PATH"] = test_data
             os.environ["CHUNK_SIZE"] = str(chunk_size)
             os.environ["CHUNK_OVERLAP"] = str(chunk_overlap)
+            os.environ["NUM_CHUNKS"] = str(num_chunks)
             os.environ["BM25_WEIGHT"] = str(bm25_weight)
             os.environ["DOCUMENT_STRUCTURE_MODE"] = doc_mode
             os.environ["RETRIEVAL_TYPE"] = retrieval_type

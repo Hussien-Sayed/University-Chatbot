@@ -39,8 +39,8 @@ def load_retriever():
     llm_api = LLMAPI()
     retriever = RAGRetriever(
         vector_db_path=os.getenv("VDB_SAVE_PATH", "data/vector_db"),
-        llm_api=llm_api,
-        num_chunks=3
+        llm_api=llm_api
+        # num_chunks uses NUM_CHUNKS env var (defaults to 3)
     )
     return retriever
 
