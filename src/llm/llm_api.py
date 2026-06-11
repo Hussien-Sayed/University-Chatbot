@@ -1,23 +1,38 @@
 import os
+import re
 from typing import List, Optional
+
+from .providers.groq_api import GroqProvider
+from .providers.ollama_api import OllamaProvider
 
 
 class LLMAPI:
-    """Class for LLM API using Groq"""
+    """Class for LLM API supporting multiple providers (Groq, Ollama)."""
 
-    def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
-        self.model_name = model_name or os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
-        self.api_key = api_key or os.getenv("GROQ_API_KEY")
+    def __init__(
+        self,
+        provider: Optional[str] = None,
+        model_name: Optional[str] = None,
+        api_key: Optional[str] = None
+    ):
+        """Initialize LLM API with specified provider.
+
+        Args:
+            provider: LLM provider to use ("groq" or "ollama"). Defaults to env var LLM_PROVIDER or "groq".
+            model_name: Model name to use. Provider-specific defaults if not provided.
+            api_key: API key (only used for Groq, optional for Ollama).
+        """
+        self.provider_name = (provider or os.getenv("LLM_PROVIDER", "groq")).lower()
         self.llm_call_count = 0
 
-        if not self.api_key:
-            raise ValueError("api_key must be provided or set in .env as GROQ_API_KEY")
-
-        try:
-            from groq import Groq
-            self.client = Groq(api_key=self.api_key)
-        except ImportError:
-            raise ImportError("groq package is required. Install it with: pip install groq")
+        if self.provider_name == "groq":
+            self.provider = GroqProvider(model_name=model_name, api_key=api_key)
+            self.model_name = self.provider.model_name
+        elif self.provider_name == "ollama":
+            self.provider = OllamaProvider(model_name=model_name)
+            self.model_name = self.provider.model_name
+        else:
+            raise ValueError(f"Unknown provider: {self.provider_name}. Supported: groq, ollama")
 
     def reset_counters(self) -> None:
         """Reset the LLM API call counter."""
@@ -32,20 +47,11 @@ class LLMAPI:
             raise ValueError("prompt cannot be empty")
 
         self._increment_counter()
-        response = self.client.chat.completions.create(
-            model=self.model_name,
+        return self.provider._call_api(
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
-            max_completion_tokens=max_tokens,
-            top_p=1,
-            stream=False
+            max_tokens=max_tokens
         )
-
-        content = response.choices[0].message.content
-        if not content:
-            raise RuntimeError("LLM returned empty response")
-
-        return content.strip()
 
     def evaluate_chunk_relevance(self, query: str, chunk_content: str, max_tokens: int = 10) -> float:
         """Evaluate how relevant a chunk is to the query. Returns score 0-1."""
@@ -64,17 +70,12 @@ Rate relevance from 0 to 1, where:
 Respond with only a number between 0 and 1."""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
+            content = self.provider._call_api(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                max_completion_tokens=max_tokens,
-                top_p=1,
-                stream=False
+                max_tokens=max_tokens
             )
-            content = response.choices[0].message.content.strip()
             # Extract number from response
-            import re
             numbers = re.findall(r'0?\.\d+|[01]', content)
             if numbers:
                 score = float(numbers[0])
@@ -102,16 +103,11 @@ Rate confidence from 0 to 1, where:
 Respond with only a number between 0 and 1."""
 
         try:
-            result = self.client.chat.completions.create(
-                model=self.model_name,
+            content = self.provider._call_api(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                max_completion_tokens=max_tokens,
-                top_p=1,
-                stream=False
+                max_tokens=max_tokens
             )
-            content = result.choices[0].message.content.strip()
-            import re
             numbers = re.findall(r'0?\.\d+|[01]', content)
             if numbers:
                 score = float(numbers[0])
@@ -142,15 +138,11 @@ Return ONLY the query variations, one per line. Do not include numbering, bullet
 Each variation should be a complete question."""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
+            content = self.provider._call_api(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
-                max_completion_tokens=256,
-                top_p=1,
-                stream=False
+                max_tokens=256
             )
-            content = response.choices[0].message.content.strip()
             if not content:
                 return [query]
 
@@ -180,20 +172,11 @@ Each variation should be a complete question."""
         self._increment_counter()
         system_message = f"Use the following context to answer the question:\n\n{context}"
 
-        response = self.client.chat.completions.create(
-            model=self.model_name,
+        return self.provider._call_api(
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
             temperature=temperature,
-            max_completion_tokens=max_tokens,
-            top_p=1,
-            stream=False
+            max_tokens=max_tokens
         )
-
-        content = response.choices[0].message.content
-        if not content:
-            raise RuntimeError("LLM returned empty response")
-
-        return content.strip()

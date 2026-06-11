@@ -47,10 +47,17 @@ def settings_page():
         col1, col2 = st.columns(2)
 
         with col1:
+            llm_provider = st.selectbox(
+                "LLM_PROVIDER",
+                options=["groq", "ollama"],
+                index=["groq", "ollama"].index(current_env.get("LLM_PROVIDER", os.getenv("LLM_PROVIDER", "groq"))),
+                help="LLM provider to use for response generation"
+            )
+
             llm_model = st.text_input(
                 "LLM_MODEL",
                 value=current_env.get("LLM_MODEL", os.getenv("LLM_MODEL", "llama-3.1-8b-instant")),
-                help="Groq model name for response generation"
+                help="Model name for response generation (provider-specific)"
             )
 
         with col2:
@@ -337,6 +344,7 @@ def settings_page():
                 "HUGGINGFACE_API_KEY": hf_key,
                 "DATA_SOURCE_PATH": data_source,
                 "VDB_SAVE_PATH": vdb_path,
+                "LLM_PROVIDER": llm_provider,
                 "LLM_MODEL": llm_model,
                 "EMBEDDING_MODEL": embedding_model,
                 "RAG_TEST_DATA_PATH": test_data,
@@ -406,6 +414,7 @@ def settings_page():
             os.environ["HUGGINGFACE_API_KEY"] = hf_key
             os.environ["DATA_SOURCE_PATH"] = data_source
             os.environ["VDB_SAVE_PATH"] = vdb_path
+            os.environ["LLM_PROVIDER"] = llm_provider
             os.environ["LLM_MODEL"] = llm_model
             os.environ["EMBEDDING_MODEL"] = embedding_model
             os.environ["RAG_TEST_DATA_PATH"] = test_data
