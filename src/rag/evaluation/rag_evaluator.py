@@ -77,7 +77,7 @@ class RAGEvaluator:
         base_fields = ["sample_index", "question", "answer", "contexts", "ground_truth", "exists_in_source",
                        "self_eval_enabled", "self_eval_used_context", "self_eval_chunks_retrieved",
                        "self_eval_chunks_used", "self_eval_avg_relevance", "self_eval_confidence",
-                       "self_eval_fallback_triggered"]
+                       "self_eval_fallback_triggered", "llm_api_calls", "embedding_api_calls"]
         extra_fields = sorted({
             key
             for sample in samples
@@ -317,7 +317,10 @@ class RAGEvaluator:
 
             # Extract fusion metadata
             fusion = pipeline_result.get('fusion', {})
-            
+
+            # Extract API call counts
+            api_calls = pipeline_result.get('api_calls', {})
+
             query_result = {
                 "sample_index": sample_index,
                 "question": q,
@@ -337,7 +340,9 @@ class RAGEvaluator:
                 "fusion_num_variants": fusion.get('num_variants', None),
                 "fusion_k": fusion.get('k', None),
                 "fusion_top_k": fusion.get('top_k', None),
-                "fusion_query_variants": fusion.get('query_variants', [])
+                "fusion_query_variants": fusion.get('query_variants', []),
+                "llm_api_calls": api_calls.get('llm_calls', 0),
+                "embedding_api_calls": api_calls.get('embedding_calls', 0)
             }
 
             if experiment_name:

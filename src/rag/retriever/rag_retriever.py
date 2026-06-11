@@ -24,10 +24,12 @@ class RAGRetriever:
         vector_db_path: str,
         llm_api: LLMAPI,
         num_chunks: Optional[int] = None,
-        retriever_type: Optional[str] = None
+        retriever_type: Optional[str] = None,
+        embedding_api: Optional[Any] = None
     ):
         self.vector_db_path = Path(vector_db_path)
         self.llm_api = llm_api
+        self.embedding_api = embedding_api
         self.num_chunks = num_chunks if num_chunks is not None else int(os.getenv("NUM_CHUNKS", "3"))
         self.retriever_type = retriever_type or os.getenv("RETRIEVAL_TYPE", "vector")
         self.bm25_weight = float(os.getenv("BM25_WEIGHT", "0.5"))
@@ -306,8 +308,8 @@ class RAGRetriever:
         query_variants = self.llm_api.generate_query_variants(query, self.fusion_num_variants)
         self._last_fusion_variants = query_variants  # Store for UI display
 
-        # Initialize embedding API for variant embeddings
-        embedding_api = EmbeddingAPI()
+        # Use provided embedding API or create new one for variant embeddings
+        embedding_api = self.embedding_api if self.embedding_api else EmbeddingAPI()
 
         # Retrieve results for each variant
         all_results = []

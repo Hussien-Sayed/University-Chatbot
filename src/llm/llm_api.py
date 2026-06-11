@@ -8,6 +8,7 @@ class LLMAPI:
     def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
         self.model_name = model_name or os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
+        self.llm_call_count = 0
 
         if not self.api_key:
             raise ValueError("api_key must be provided or set in .env as GROQ_API_KEY")
@@ -18,10 +19,19 @@ class LLMAPI:
         except ImportError:
             raise ImportError("groq package is required. Install it with: pip install groq")
 
+    def reset_counters(self) -> None:
+        """Reset the LLM API call counter."""
+        self.llm_call_count = 0
+
+    def _increment_counter(self) -> None:
+        """Increment the LLM API call counter."""
+        self.llm_call_count += 1
+
     def generate_response(self, prompt: str, max_tokens: int = 512, temperature: float = 0.7) -> str:
         if not prompt or not prompt.strip():
             raise ValueError("prompt cannot be empty")
 
+        self._increment_counter()
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
@@ -39,6 +49,7 @@ class LLMAPI:
 
     def evaluate_chunk_relevance(self, query: str, chunk_content: str, max_tokens: int = 10) -> float:
         """Evaluate how relevant a chunk is to the query. Returns score 0-1."""
+        self._increment_counter()
         prompt = f"""Rate how relevant this text is to answering the question.
 
 Question: {query}
@@ -74,6 +85,7 @@ Respond with only a number between 0 and 1."""
 
     def evaluate_response_confidence(self, query: str, response: str, context: str, max_tokens: int = 10) -> float:
         """Evaluate confidence in the generated response. Returns score 0-1."""
+        self._increment_counter()
         prompt = f"""Rate your confidence that this answer is correct and well-supported by the context.
 
 Question: {query}
@@ -117,6 +129,7 @@ Respond with only a number between 0 and 1."""
         Returns:
             List of query strings including original + generated variants
         """
+        self._increment_counter()
         if not query or not query.strip():
             return [query]
 
@@ -164,6 +177,7 @@ Each variation should be a complete question."""
         if not prompt or not prompt.strip():
             raise ValueError("prompt cannot be empty")
 
+        self._increment_counter()
         system_message = f"Use the following context to answer the question:\n\n{context}"
 
         response = self.client.chat.completions.create(

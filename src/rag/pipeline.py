@@ -37,16 +37,17 @@ class RAGPipeline:
         # Initialize retriever with all configuration from environment
         self.retriever = RAGRetriever(
             vector_db_path=self.vector_db_path,
-            llm_api=self.llm_api
+            llm_api=self.llm_api,
+            embedding_api=self.embedding_api
         )
 
     def run(self, query: str) -> Dict[str, Any]:
         """
         Run the complete RAG pipeline for a single query.
-        
+
         Args:
             query: The user's question
-            
+
         Returns:
             Dictionary containing:
                 - response: The main answer string
@@ -56,9 +57,14 @@ class RAGPipeline:
                 - self_eval: Dict with self-evaluation metadata
                 - retriever_type: Type of retrieval used
                 - query_time_seconds: Total processing time
+                - api_calls: Dict with llm_calls and embedding_calls counts
         """
+        # Reset API call counters at the start of each run
+        self.llm_api.reset_counters()
+        self.embedding_api.reset_counters()
+
         query_start_time = time.time()
-        
+
         # Generate embedding for the query
         query_embedding = self.embedding_api.generate_embedding(query)
         
@@ -76,9 +82,13 @@ class RAGPipeline:
         
         # Extract self-evaluation metadata
         eval_metadata = result.get('evaluation', {})
-        
+
+        # Capture API call counts before resetting
+        llm_calls = self.llm_api.llm_call_count
+        embedding_calls = self.embedding_api.embedding_call_count
+
         # Build standardized response dictionary
-        return {
+        response_dict = {
             "response": result['response'],
             "query": query,
             "retrieved_chunks": retrieved_chunks,
@@ -101,8 +111,18 @@ class RAGPipeline:
                 "query_variants": fusion_variants
             },
             "retriever_type": self.retriever.retriever_type,
-            "query_time_seconds": query_time_seconds
+            "query_time_seconds": query_time_seconds,
+            "api_calls": {
+                "llm_calls": llm_calls,
+                "embedding_calls": embedding_calls
+            }
         }
+
+        # Reset counters after capturing for next run
+        self.llm_api.reset_counters()
+        self.embedding_api.reset_counters()
+
+        return response_dict
 
     def get_config(self) -> Dict[str, Any]:
         """

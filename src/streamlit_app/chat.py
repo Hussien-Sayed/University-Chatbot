@@ -116,6 +116,12 @@ def chat_page():
                                 if not self_eval.get('used_context'):
                                     st.info("ℹ️ No relevant context found - answered without retrieval")
 
+                        # Show API call counts
+                        api_calls = result.get('api_calls', {})
+                        with st.expander("📊 API Call Statistics"):
+                            st.write(f"**LLM API calls:** {api_calls.get('llm_calls', 0)}")
+                            st.write(f"**Embedding API calls:** {api_calls.get('embedding_calls', 0)}")
+
                         # Show fusion query variants if enabled
                         if fusion.get('enabled') and fusion.get('query_variants'):
                             with st.expander("🔀 Query Fusion Variants"):
