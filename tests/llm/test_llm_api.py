@@ -156,11 +156,11 @@ class TestLLMAPI:
             LLMAPI(provider="unknown")
 
     def test_provider_from_env_var(self):
-        """Test that provider can be set via LLM_PROVIDER env var."""
+        """Test that provider can be set via CHAT_LLM_PROVIDER env var."""
         mock_groq = MagicMock()
         mock_ollama = MagicMock()
         with patch.dict('sys.modules', {'groq': mock_groq, 'ollama': mock_ollama}):
-            with patch.dict(os.environ, {"GROQ_API_KEY": "test_key", "LLM_PROVIDER": "ollama"}):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "test_key", "CHAT_LLM_PROVIDER": "ollama"}):
                 api = LLMAPI()
                 assert api.provider_name == "ollama"
 
@@ -168,7 +168,7 @@ class TestLLMAPI:
         """Test that provider argument overrides env var."""
         mock_groq = MagicMock()
         with patch.dict('sys.modules', {'groq': mock_groq}):
-            with patch.dict(os.environ, {"GROQ_API_KEY": "test_key", "LLM_PROVIDER": "ollama"}):
+            with patch.dict(os.environ, {"GROQ_API_KEY": "test_key", "CHAT_LLM_PROVIDER": "ollama"}):
                 # Provider arg should override env var
                 api = LLMAPI(provider="groq")
                 assert api.provider_name == "groq"

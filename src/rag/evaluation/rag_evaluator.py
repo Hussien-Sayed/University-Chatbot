@@ -10,8 +10,11 @@ from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
 from langchain_groq import ChatGroq
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpointEmbeddings
+
 from tqdm import tqdm
+
 
 from src.llm.embedding_api import EmbeddingAPI
 from src.llm.llm_api import LLMAPI
@@ -272,13 +275,30 @@ class RAGEvaluator:
         if experiment_name:
             self._save_experiment_progress(experiment_name, query_results, failures, len(test_samples))
 
-        eval_llm = ChatGroq(
-            model_name=self.llm_model,
-            api_key=os.getenv("GROQ_API_KEY")
-        )
-        eval_embeddings = HuggingFaceEmbeddings(
-            model_name=self.embedding_model
-        )
+        # Determine evaluation LLM provider and model
+        eval_provider = os.getenv("EVAL_LLM_PROVIDER", "groq").lower()
+        eval_model = os.getenv("EVAL_LLM_MODEL", self.llm_model)
+        if eval_provider == "ollama":
+            if ChatOllama is None:
+                raise ImportError("langchain-ollama package is required for Ollama evaluation. Install it with: pip install langchain-ollama")
+            eval_llm = ChatOllama(model=eval_model)
+        else:
+            eval_llm = ChatGroq(
+                model_name=eval_model,
+                api_key=os.getenv("GROQ_API_KEY")
+            )
+        # Determine evaluation embedding provider and model
+        eval_embedding_provider = os.getenv("EVAL_EMBEDDING_PROVIDER", "local").lower()
+        eval_embedding_model = os.getenv("EVAL_EMBEDDING_MODEL", self.embedding_model)
+        if eval_embedding_provider == "cloud":
+            eval_embeddings = HuggingFaceEndpointEmbeddings(
+                model=eval_embedding_model,
+                huggingfacehub_api_token=os.getenv("HUGGINGFACE_API_KEY")
+            )
+        else:
+            eval_embeddings = HuggingFaceEmbeddings(
+                model_name=eval_embedding_model
+            )
 
         metrics = [
             faithfulness,

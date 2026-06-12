@@ -47,24 +47,57 @@ def settings_page():
         col1, col2 = st.columns(2)
 
         with col1:
-            llm_provider = st.selectbox(
-                "LLM_PROVIDER",
+            chat_llm_provider = st.selectbox(
+                "CHAT_LLM_PROVIDER",
                 options=["groq", "ollama"],
-                index=["groq", "ollama"].index(current_env.get("LLM_PROVIDER", os.getenv("LLM_PROVIDER", "groq"))),
-                help="LLM provider to use for response generation"
+                index=["groq", "ollama"].index(current_env.get("CHAT_LLM_PROVIDER", os.getenv("CHAT_LLM_PROVIDER", current_env.get("LLM_PROVIDER", os.getenv("LLM_PROVIDER", "groq"))))),
+                help="LLM provider to use for chat/pipeline response generation"
             )
 
-            llm_model = st.text_input(
-                "LLM_MODEL",
-                value=current_env.get("LLM_MODEL", os.getenv("LLM_MODEL", "llama-3.1-8b-instant")),
-                help="Model name for response generation (provider-specific)"
+            eval_llm_provider = st.selectbox(
+                "EVAL_LLM_PROVIDER",
+                options=["groq", "ollama"],
+                index=["groq", "ollama"].index(current_env.get("EVAL_LLM_PROVIDER", os.getenv("EVAL_LLM_PROVIDER", "groq"))),
+                help="LLM provider to use for RAGAS evaluation metrics"
+            )
+
+            chat_llm_model = st.text_input(
+                "CHAT_LLM_MODEL",
+                value=current_env.get("CHAT_LLM_MODEL", os.getenv("CHAT_LLM_MODEL", os.getenv("LLM_MODEL", "llama-3.1-8b-instant"))),
+                help="Model name for chat/pipeline (used by CHAT_LLM_PROVIDER)"
+            )
+
+            eval_llm_model = st.text_input(
+                "EVAL_LLM_MODEL",
+                value=current_env.get("EVAL_LLM_MODEL", os.getenv("EVAL_LLM_MODEL", os.getenv("LLM_MODEL", "llama-3.1-8b-instant"))),
+                help="Model name for RAGAS evaluation (used by EVAL_LLM_PROVIDER)"
             )
 
         with col2:
+            embedding_provider = st.selectbox(
+                "EMBEDDING_PROVIDER",
+                options=["cloud", "local"],
+                index=["cloud", "local"].index(current_env.get("EMBEDDING_PROVIDER", os.getenv("EMBEDDING_PROVIDER", "cloud"))),
+                help="Embedding provider: 'cloud' uses HuggingFace Inference API (requires API key), 'local' runs transformers locally"
+            )
+
+            eval_embedding_provider = st.selectbox(
+                "EVAL_EMBEDDING_PROVIDER",
+                options=["local", "cloud"],
+                index=["local", "cloud"].index(current_env.get("EVAL_EMBEDDING_PROVIDER", os.getenv("EVAL_EMBEDDING_PROVIDER", "local"))),
+                help="Embedding provider for RAGAS evaluation: 'local' runs sentence-transformers locally, 'cloud' uses HuggingFace Inference API"
+            )
+
             embedding_model = st.text_input(
                 "EMBEDDING_MODEL",
                 value=current_env.get("EMBEDDING_MODEL", os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")),
-                help="HuggingFace model for embeddings"
+                help="HuggingFace model for embeddings (used by EMBEDDING_PROVIDER)"
+            )
+
+            eval_embedding_model = st.text_input(
+                "EVAL_EMBEDDING_MODEL",
+                value=current_env.get("EVAL_EMBEDDING_MODEL", os.getenv("EVAL_EMBEDDING_MODEL", os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"))),
+                help="HuggingFace model for RAGAS evaluation embeddings (used by EVAL_EMBEDDING_PROVIDER)"
             )
 
     # Paths Configuration
@@ -344,9 +377,14 @@ def settings_page():
                 "HUGGINGFACE_API_KEY": hf_key,
                 "DATA_SOURCE_PATH": data_source,
                 "VDB_SAVE_PATH": vdb_path,
-                "LLM_PROVIDER": llm_provider,
-                "LLM_MODEL": llm_model,
+                "CHAT_LLM_PROVIDER": chat_llm_provider,
+                "EVAL_LLM_PROVIDER": eval_llm_provider,
+                "CHAT_LLM_MODEL": chat_llm_model,
+                "EVAL_LLM_MODEL": eval_llm_model,
+                "EMBEDDING_PROVIDER": embedding_provider,
+                "EVAL_EMBEDDING_PROVIDER": eval_embedding_provider,
                 "EMBEDDING_MODEL": embedding_model,
+                "EVAL_EMBEDDING_MODEL": eval_embedding_model,
                 "RAG_TEST_DATA_PATH": test_data,
                 "CHUNK_SIZE": str(chunk_size),
                 "CHUNK_OVERLAP": str(chunk_overlap),
@@ -414,9 +452,14 @@ def settings_page():
             os.environ["HUGGINGFACE_API_KEY"] = hf_key
             os.environ["DATA_SOURCE_PATH"] = data_source
             os.environ["VDB_SAVE_PATH"] = vdb_path
-            os.environ["LLM_PROVIDER"] = llm_provider
-            os.environ["LLM_MODEL"] = llm_model
+            os.environ["CHAT_LLM_PROVIDER"] = chat_llm_provider
+            os.environ["EVAL_LLM_PROVIDER"] = eval_llm_provider
+            os.environ["CHAT_LLM_MODEL"] = chat_llm_model
+            os.environ["EVAL_LLM_MODEL"] = eval_llm_model
+            os.environ["EMBEDDING_PROVIDER"] = embedding_provider
+            os.environ["EVAL_EMBEDDING_PROVIDER"] = eval_embedding_provider
             os.environ["EMBEDDING_MODEL"] = embedding_model
+            os.environ["EVAL_EMBEDDING_MODEL"] = eval_embedding_model
             os.environ["RAG_TEST_DATA_PATH"] = test_data
             os.environ["CHUNK_SIZE"] = str(chunk_size)
             os.environ["CHUNK_OVERLAP"] = str(chunk_overlap)

@@ -1,24 +1,39 @@
 import os
 from typing import List, Optional
 
-from huggingface_hub import InferenceClient
+from .providers.huggingface_cloud_api import HuggingFaceCloudProvider
+from .providers.huggingface_local_api import HuggingFaceLocalProvider
 
 
 class EmbeddingAPI:
-    """Class for generating embeddings using HuggingFace Inference Client"""
+    """Class for generating embeddings supporting cloud and local providers."""
 
-    def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
-        self.model_name = model_name or os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-        self.api_key = api_key or os.getenv("HUGGINGFACE_API_KEY")
+    def __init__(
+        self,
+        provider: Optional[str] = None,
+        model_name: Optional[str] = None,
+        api_key: Optional[str] = None
+    ):
+        """Initialize EmbeddingAPI with specified provider.
+
+        Args:
+            provider: Embedding provider to use ("cloud" or "local"). Defaults to env var EMBEDDING_PROVIDER or "cloud".
+            model_name: Model name to use. Defaults to EMBEDDING_MODEL env var.
+            api_key: API key (only used for cloud provider).
+        """
+        self.provider_name = (provider or os.getenv("EMBEDDING_PROVIDER", "cloud")).lower()
         self.embedding_call_count = 0
 
-        if not self.api_key:
-            raise ValueError("api_key must be provided or set in .env as HUGGINGFACE_API_KEY")
-
-        self.client = InferenceClient(
-            model=self.model_name,
-            token=self.api_key
-        )
+        if self.provider_name == "cloud":
+            self.provider = HuggingFaceCloudProvider(model_name=model_name, api_key=api_key)
+            self.model_name = self.provider.model_name
+            self.api_key = self.provider.api_key
+        elif self.provider_name == "local":
+            self.provider = HuggingFaceLocalProvider(model_name=model_name)
+            self.model_name = self.provider.model_name
+            self.api_key = None
+        else:
+            raise ValueError(f"Unknown embedding provider: {self.provider_name}. Supported: cloud, local")
 
     def reset_counters(self) -> None:
         """Reset the embedding API call counter."""
@@ -33,17 +48,7 @@ class EmbeddingAPI:
             raise ValueError("text cannot be empty")
 
         self._increment_counter()
-        embedding = self.client.feature_extraction(text, normalize=True, truncate=True)
-
-        if hasattr(embedding, 'tolist'):
-            embedding = embedding.tolist()
-
-        if isinstance(embedding, list) and len(embedding) > 0:
-            if isinstance(embedding[0], list):
-                return embedding[0]
-            return embedding
-
-        raise RuntimeError(f"Unexpected embedding format: {type(embedding)}")
+        return self.provider._generate_embedding(text)
 
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         if not texts:

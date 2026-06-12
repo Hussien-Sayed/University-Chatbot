@@ -18,18 +18,19 @@ class LLMAPI:
         """Initialize LLM API with specified provider.
 
         Args:
-            provider: LLM provider to use ("groq" or "ollama"). Defaults to env var LLM_PROVIDER or "groq".
+            provider: LLM provider to use ("groq" or "ollama"). Defaults to env var CHAT_LLM_PROVIDER or "groq".
             model_name: Model name to use. Provider-specific defaults if not provided.
             api_key: API key (only used for Groq, optional for Ollama).
         """
-        self.provider_name = (provider or os.getenv("LLM_PROVIDER", "groq")).lower()
+        self.chat_llm_model = os.getenv("CHAT_LLM_MODEL")
+        self.provider_name = (provider or os.getenv("CHAT_LLM_PROVIDER", "groq")).lower()
         self.llm_call_count = 0
 
         if self.provider_name == "groq":
-            self.provider = GroqProvider(model_name=model_name, api_key=api_key)
+            self.provider = GroqProvider(model_name=model_name or self.chat_llm_model, api_key=api_key)
             self.model_name = self.provider.model_name
         elif self.provider_name == "ollama":
-            self.provider = OllamaProvider(model_name=model_name)
+            self.provider = OllamaProvider(model_name=model_name or self.chat_llm_model)
             self.model_name = self.provider.model_name
         else:
             raise ValueError(f"Unknown provider: {self.provider_name}. Supported: groq, ollama")

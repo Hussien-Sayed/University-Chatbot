@@ -2,6 +2,6 @@ project-steps.md
 debug.ipynb
 .env
 *.pyc
-__pycache__
+__pycache__/
 data/evaluation_results/
 experiments/
